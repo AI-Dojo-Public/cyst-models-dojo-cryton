@@ -1,9 +1,8 @@
-from cyst.api.logic.metadata import Metadata
 from cyst_models.cryton.actions.action import Action
 
 
 class UpdateRouting(Action):
-    def __init__(self, message_id: int, metadata: Metadata, session_id: int):
+    def __init__(self, message_id: int, session_id: int):
         template = {
             "name": f"update-routing-table-{message_id}",
             "step_type": "worker/execute",
@@ -19,4 +18,4 @@ class UpdateRouting(Action):
                 }
             }
         }
-        super().__init__(message_id, metadata, template)
+        super().__init__(message_id, template)

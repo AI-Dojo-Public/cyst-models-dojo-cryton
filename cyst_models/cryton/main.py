@@ -194,8 +194,8 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         )
 
     def process_wait_for_session(self, message: Request, node: Node) -> Tuple[int, Response]:
-        action = WaitForSession(message.id, message.metadata)
-        action.execute(self.proxy)
+        action = WaitForSession(message.id)
+        action.execute(self.proxy, message.src_ip)
 
         if action.is_success():
             return 1, self._messaging.create_response(
@@ -213,8 +213,8 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         )
 
     def process_update_routing(self, message: Request, node: Node) -> Tuple[int, Response]:
-        action = UpdateRouting(message.id, message.metadata, int(message.session.id))
-        action.execute(self.proxy)
+        action = UpdateRouting(message.id, int(message.session.id))
+        action.execute(self.proxy, message.src_ip)
 
         if action.is_success():
             return 1, self._messaging.create_response(
@@ -235,8 +235,8 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         # parameters: from_host, to_network, technique (default is SYN)
         target = message.action.parameters["to_network"].value
 
-        action = ScanNetwork(message.id, message.metadata, target, int(message.session.id))
-        action.execute(self.proxy)
+        action = ScanNetwork(message.id, target, int(message.session.id))
+        action.execute(self.proxy, message.src_ip)
 
         if action.is_success():
             return 1, self._messaging.create_response(
@@ -258,8 +258,8 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         target = message.action.parameters["to_network"].value
         ports = message.action.parameters["services"].value
 
-        action = FindServices(message.id, message.metadata, target, ports)
-        action.execute(self.proxy)
+        action = FindServices(message.id, target, ports)
+        action.execute(self.proxy, message.src_ip)
 
         if action.is_success():
             return 1, self._messaging.create_response(
@@ -281,8 +281,8 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         target = message.action.parameters["to_host"].value
         service = message.action.parameters["service"].value
 
-        action = ExploitServer(message.id, message.metadata, target, service)
-        action.execute(self.proxy)
+        action = ExploitServer(message.id, target, service)
+        action.execute(self.proxy, message.src_ip)
 
         if action.is_success():
             if service in ["ssh"]:
@@ -309,8 +309,8 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         target = message.action.parameters["to_host"].value
         directory = message.action.parameters["directory"].value
 
-        action = FindData(message.id, message.metadata, int(message.session.id), directory)
-        action.execute(self.proxy)
+        action = FindData(message.id, int(message.session.id), directory)
+        action.execute(self.proxy, message.src_ip)
 
         if action.is_success():
             return 1, self._messaging.create_response(
@@ -331,8 +331,8 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         target = message.action.parameters["to_host"].value
         command = message.action.parameters["command"].value
 
-        action = ExecuteCommand(message.id, message.metadata, int(message.session.id), command)
-        action.execute(self.proxy)
+        action = ExecuteCommand(message.id, int(message.session.id), command)
+        action.execute(self.proxy, message.src_ip)
 
         if action.is_success():
             return 1, self._messaging.create_response(
@@ -354,8 +354,8 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         target = message.action.parameters["to_host"].value
         file = message.action.parameters["data"].value
 
-        action = ExfiltrateData(message.id, message.metadata, int(message.session.id), file)
-        action.execute(self.proxy)
+        action = ExfiltrateData(message.id, int(message.session.id), file)
+        action.execute(self.proxy, message.src_ip)
 
         if action.is_success():
             return 1, self._messaging.create_response(

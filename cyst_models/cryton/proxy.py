@@ -48,9 +48,8 @@ class Proxy:
 
     def __init__(self, cryton_core_ip: str, cryton_core_port: int):
         self.api_root = f"http://{cryton_core_ip}:{cryton_core_port}/api/"
-        self._stage_id: Optional[int] = None
-        self._stage_execution_id: Optional[int] = None
         self._agents: dict[int, dict] = {}
+        self._agent_lookup: dict[str, int] = {}
 
     def check_connection(self):
         get_request(self.api_root)
@@ -117,13 +116,19 @@ class Proxy:
     def _get_run_report(self, run_id: int) -> dict:
         return get_request(api_url=f"{self.api_root}runs/{run_id}/report/").json()
 
-    def initialize_agent(self, agent_id: int):
+    def find_agent_id(self, agent_ip: str) -> int:
+        return self._agent_lookup[agent_ip]
+
+    def initialize_agent(self, agent_ip: str):
+        # TODO: unable to determine, how to reliably assign ids/worker names
+        #  Currently, demo-2023 supports only one Worker (cyst-agent-1)
+        agent_id = len(self._agents.keys()) + 1
         worker_id = self._create_worker(
             f"cyst-agent-{agent_id}",
             "Agent used for running action in the emulation environment."
         )
         if not self._healthcheck_worker(worker_id):
-            raise RuntimeError(f"Unable to initialize agent with ID {agent_id}.")
+            raise RuntimeError(f"Agent with ID {agent_id} is unreachable.")
 
         template = copy.deepcopy(self.TEMPLATE)
         template["plan"]["name"] = f"Plan for CYST Worker {agent_id}"
@@ -135,6 +140,7 @@ class Proxy:
         stage_execution_id = self._get_run_report(run_id)["detail"]["plan_executions"][0]["stage_executions"][0]["id"]
         self._execute_run(run_id)
 
+        self._agent_lookup[agent_ip] = agent_id
         self._agents[agent_id] = {
             "worker_id": worker_id,
             "plan_id": plan_id,

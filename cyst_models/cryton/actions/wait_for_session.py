@@ -1,9 +1,8 @@
-from cyst.api.logic.metadata import Metadata
 from cyst_models.cryton.actions.action import Action
 
 
 class WaitForSession(Action):
-    def __init__(self, message_id: int, metadata: Metadata):
+    def __init__(self, message_id: int):
         template = {
             "name": f"phishing-response-{message_id}",
             "step_type": "worker/execute",
@@ -22,4 +21,4 @@ class WaitForSession(Action):
                 }
             }
         }
-        super().__init__(message_id, metadata, template)
+        super().__init__(message_id, template)
