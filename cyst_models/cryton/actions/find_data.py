@@ -1,15 +1,12 @@
-from .cryton_action import CrytonAction
 from cyst.api.logic.metadata import Metadata
+from cyst_models.cryton.actions.action import Action
 
 
-class FindData(CrytonAction):
+class FindData(Action):
     def __init__(self, message_id: int, metadata: Metadata, session: int, directory: str):
-        super().__init__(message_id, metadata)
-
-        self._template = {
+        template = {
             "name": f"find-data-{message_id}",
             "step_type": "worker/execute",
-            "is_init": True,
             "arguments": {
                 "module": "mod_cmd",
                 "module_arguments": {
@@ -18,3 +15,4 @@ class FindData(CrytonAction):
                 }
             }
         }
+        super().__init__(message_id, metadata, template)

@@ -1,15 +1,12 @@
-from .cryton_action import CrytonAction
 from cyst.api.logic.metadata import Metadata
+from cyst_models.cryton.actions.action import Action
 
 
-class UpdateRouting(CrytonAction):
+class UpdateRouting(Action):
     def __init__(self, message_id: int, metadata: Metadata, session_id: int):
-        super().__init__(message_id, metadata)
-
-        self._template = {
+        template = {
             "name": f"update-routing-table-{message_id}",
             "step_type": "worker/execute",
-            "is_init": True,
             "arguments": {
                 "module": "mod_msf",
                 "module_arguments": {
@@ -22,3 +19,4 @@ class UpdateRouting(CrytonAction):
                 }
             }
         }
+        super().__init__(message_id, metadata, template)

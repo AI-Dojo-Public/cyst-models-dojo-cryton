@@ -1,15 +1,12 @@
-from .cryton_action import CrytonAction
 from cyst.api.logic.metadata import Metadata
+from cyst_models.cryton.actions.action import Action
 
 
-class ScanNetwork(CrytonAction):
+class ScanNetwork(Action):
     def __init__(self, message_id: int, metadata: Metadata, target: str, session: int):
-        super().__init__(message_id, metadata)
-
-        self._template = {
+        template = {
             "name": f"scan-network-{message_id}",
             "step_type": "worker/execute",
-            "is_init": True,
             "arguments": {
                 "module": "mod_msf",
                 "module_arguments": {
@@ -22,6 +19,7 @@ class ScanNetwork(CrytonAction):
                 }
             }
         }
+        super().__init__(message_id, metadata, template)
 
         # output
         # msf6 post(multi/gather/ping_sweep) > run

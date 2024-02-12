@@ -27,7 +27,7 @@ def post_request(api_url: str, data: dict = None, files: dict = None) -> request
         raise RuntimeError(f"{api_url} request timed out")
 
 
-class Cryton:
+class Proxy:
     TEMPLATE = {
         "plan": {
             "name": "Dynamic plan equivalent",

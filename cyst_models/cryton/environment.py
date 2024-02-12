@@ -9,12 +9,12 @@ from cyst.api.logic.access import Authorization, AuthenticationTarget, Authentic
 from cyst.api.logic.action import Action, ExecutionEnvironment, ExecutionEnvironmentType
 from cyst.api.logic.behavioral_model import BehavioralModel
 from cyst.api.network.session import Session
-
 from cyst.core.environment.message import MessageImpl, Metadata
-from .cryton_utils import Cryton
+
+from cyst_models.cryton.proxy import Proxy
 
 
-class CrytonProxy(EnvironmentMessaging, EnvironmentResources):
+class EnvironmentCryton(EnvironmentMessaging, EnvironmentResources):
     def __init__(self, environment: Environment, cryton_host: str, cryton_port: int):
         self._env = environment
         self._messaging = environment.messaging
@@ -27,8 +27,8 @@ class CrytonProxy(EnvironmentMessaging, EnvironmentResources):
         self._behavioral_models: dict[str, BehavioralModel] = environment._behavioral_models
 
         self._agent_counter = 0
-        self.cryton = Cryton(cryton_host, cryton_port)
-        self._behavioral_models["emulation"].cryton_proxy = self.cryton
+        self.proxy = Proxy(cryton_host, cryton_port)
+        self._behavioral_models["dojo"].proxy = self.proxy
 
     def open_session(self, request: Request):
         raise RuntimeError("Not implemented")
@@ -40,7 +40,7 @@ class CrytonProxy(EnvironmentMessaging, EnvironmentResources):
 
     def _add_agent(self, service_id: int):
         self._agent_counter += 1
-        self.cryton.initialize_agent(self._agent_counter)
+        self.proxy.initialize_agent(self._agent_counter)
         self.agents[service_id] = self._agent_counter
 
     def send_message(self, message: Message, delay: int = 0) -> None:
