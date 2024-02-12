@@ -1,20 +1,17 @@
 from copy import deepcopy
-
 from importlib_metadata import entry_points
 from typing import Optional, Union, Any
 
 from cyst.api.logic.action import ExecutionEnvironment, ExecutionEnvironmentType, Action
-
-from cyst.core.environment.proxy import EnvironmentProxy
 from cyst.api.host.service import ActiveService
 from cyst.api.environment.environment import Environment
 from cyst.api.environment.message import Status, StatusOrigin, StatusValue, Response
 from cyst.api.logic.access import Authorization, AuthenticationToken
 from cyst.api.network.session import Session
-
+from cyst.core.environment.proxy import EnvironmentProxy
 from cyst_services.scripted_actor.main import ScriptedActorControl
 
-from cyst_models.cryton.environment_proxy_cryton import CrytonProxy
+from cyst_models.cryton.environment import EnvironmentCryton
 
 
 class Scenario:
@@ -22,8 +19,8 @@ class Scenario:
         self.environment = Environment.create()
         self.environment.control.init()
         self.environment.control.run()
-        self.proxy = CrytonProxy(self.environment, "localhost", 8001)
-        self.environment_proxy = EnvironmentProxy(self.proxy, 'attacker_node', 'scripted_actor')
+        self.cryton_env = EnvironmentCryton(self.environment, "localhost", 8001)
+        self.environment_proxy = EnvironmentProxy(self.cryton_env, 'attacker_node', 'scripted_actor')
         self.attacker = self.create_attacker()
         self.actions = self.get_actions()
 
@@ -33,19 +30,19 @@ class Scenario:
         for plugin in entry_points(group="cyst.services"):
             service_description = plugin.load()
             if service_description.name == "scripted_actor":
-                attacker_service = service_description.creation_fn(self.environment_proxy, self.proxy, None)
+                attacker_service = service_description.creation_fn(self.environment_proxy, self.cryton_env, None)
                 break
 
         if not attacker_service:
             exit(1)
 
-        self.proxy.register_service("attacker_node", "scripted_actor", attacker_service)
+        self.cryton_env.register_service("attacker_node", "scripted_actor", attacker_service)
 
         return self.environment.configuration.service.get_service_interface(attacker_service, ScriptedActorControl)
 
     def get_actions(self) -> dict[str, Action]:
         cryton_actions = self.environment.resources.action_store.get_prefixed(
-            "emulation", ExecutionEnvironment(ExecutionEnvironmentType.EMULATION, "CRYTON")
+            "dojo", ExecutionEnvironment(ExecutionEnvironmentType.EMULATION, "CRYTON")
         )
 
         return {action.id: action for action in cryton_actions}
@@ -102,7 +99,7 @@ class Scenario:
 if __name__ == '__main__':
     scenario = Scenario()
     scenario.display_actions()
-    scenario.proxy.cryton.check_connection()
+    scenario.cryton_env.proxy.check_connection()
 
     # ------------------------------------
     # Phishing
@@ -110,13 +107,13 @@ if __name__ == '__main__':
 
     # Get the initial session from phishing
     action_response = scenario.execute_action(
-        "emulation:wait_for_session",
+        "dojo:wait_for_session",
         [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)]
     )
 
     # Update MSF's routing table
     action_response = scenario.execute_action(
-        "emulation:update_routing",
+        "dojo:update_routing",
         [Status(StatusOrigin.NETWORK, StatusValue.SUCCESS), Status(StatusOrigin.NETWORK, StatusValue.FAILURE)],
         session=action_response.session
     )
@@ -127,7 +124,7 @@ if __name__ == '__main__':
 
     # Scan new network
     action_response = scenario.execute_action(
-        "emulation:scan_network",
+        "dojo:scan_network",
         [Status(StatusOrigin.NETWORK, StatusValue.SUCCESS)],
         {"to_network": "192.168.2.10"},  # 192.168.2.10/24 scans the whole subnet
         session=action_response.session,
@@ -139,7 +136,7 @@ if __name__ == '__main__':
 
     # Scan the hosts for ssh service
     action_response = scenario.execute_action(
-        "emulation:find_services",
+        "dojo:find_services",
         [Status(StatusOrigin.NETWORK, StatusValue.SUCCESS)],
         {"to_network": "192.168.2.10", "services": "22"},  # 192.168.2.10/24 scans the whole subnet
         session=action_response.session,
@@ -147,7 +144,7 @@ if __name__ == '__main__':
 
     # Bruteforce the ssh service
     action_response = scenario.execute_action(
-        "emulation:exploit_server",
+        "dojo:exploit_server",
         [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
         {"to_host": "192.168.2.10", "service": "ssh"},
         session=action_response.session,
@@ -159,7 +156,7 @@ if __name__ == '__main__':
 
     # Home directory listing
     action_response = scenario.execute_action(
-        "emulation:find_data",
+        "dojo:find_data",
         [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
         {"to_host": "192.168.2.10", "directory": "~/"},
         session=action_response.session,
@@ -167,7 +164,7 @@ if __name__ == '__main__':
 
     # Check for users
     action_response = scenario.execute_action(
-        "emulation:exfiltrate_data",
+        "dojo:exfiltrate_data",
         [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
         {"to_host": "192.168.2.10", "data": "/etc/passwd"},
         session=action_response.session,
@@ -175,7 +172,7 @@ if __name__ == '__main__':
 
     # Check for mysqldump
     action_response = scenario.execute_action(
-        "emulation:execute_command",
+        "dojo:execute_command",
         [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
         {"to_host": "192.168.2.10", "command": "which mysqldump"},
         session=action_response.session,
@@ -183,7 +180,7 @@ if __name__ == '__main__':
 
     # Check bash history
     action_response = scenario.execute_action(
-        "emulation:exfiltrate_data",
+        "dojo:exfiltrate_data",
         [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
         {"to_host": "192.168.2.10", "data": "~/.bash_history"},
         session=action_response.session,
@@ -196,7 +193,7 @@ if __name__ == '__main__':
     # Get data from DB
     # TODO: since the db is in a different network, dns isn't working? wordpress_db_node is not recognised
     action_response = scenario.execute_action(
-        "emulation:execute_command",
+        "dojo:execute_command",
         [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
         {
             "to_host": "192.168.2.10",

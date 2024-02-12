@@ -1,5 +1,4 @@
 from typing import Tuple, Callable, Union, List, Optional
-from netaddr import IPAddress
 
 from cyst.api.environment.configuration import EnvironmentConfiguration
 from cyst.api.environment.message import Request, Response, Status, StatusOrigin, StatusValue
@@ -10,52 +9,10 @@ from cyst.api.logic.action import ActionDescription, ActionType, ActionParameter
 from cyst.api.logic.behavioral_model import BehavioralModel, BehavioralModelDescription
 from cyst.api.logic.composite_action import CompositeActionManager
 from cyst.api.network.node import Node
-from cyst.api.network.session import Session
-from .cryton_utils import Cryton
 
-from .wait_for_session import WaitForSession
-from .update_routing import UpdateRouting
-from .scan_network import ScanNetwork
-from .find_services import FindServices
-from .exploit_server import ExploitServer
-from .find_data import FindData
-from .execute_command import ExecuteCommand
-from .exfiltrate_data import ExfiltrateData
-
-
-class MetasploitSession(Session):
-    def __init__(self, owner: str, session_id: int, parent: Optional['MetasploitSession'] = None):
-        self._owner = owner
-        self._id = session_id
-        self._parent = parent
-
-    @property
-    def owner(self) -> str:
-        return self._owner
-
-    @property
-    def id(self) -> str:
-        return str(self._id)
-
-    @property
-    def parent(self) -> Optional[Session]:
-        return self._parent
-
-    @property
-    def path(self) -> List[Tuple[Optional[IPAddress], Optional[IPAddress]]]:
-        return []
-
-    @property
-    def end(self) -> Tuple[IPAddress, str]:
-        return None
-
-    @property
-    def start(self) -> Tuple[IPAddress, str]:
-        return None
-
-    @property
-    def enabled(self) -> bool:
-        return True
+from cyst_models.cryton.proxy import Proxy
+from cyst_models.cryton.session import MetasploitSession
+from cyst_models.cryton.actions import *
 
 
 class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct parameters
@@ -68,11 +25,11 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         self._policy = policy
         self._messaging = messaging
         self._cam = composite_action_manager
-        self.cryton_proxy: Optional[Cryton] = None
+        self.proxy: Optional[Proxy] = None
 
         self._action_store.add(
             ActionDescription(
-                "emulation:wait_for_session",
+                "dojo:wait_for_session",
                 ActionType.DIRECT,
                 "Wait for the session to establish",
                 [],
@@ -82,7 +39,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
 
         self._action_store.add(
             ActionDescription(
-                "emulation:update_routing",
+                "dojo:update_routing",
                 ActionType.DIRECT,
                 "Update routing table",
                 [],
@@ -92,7 +49,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
 
         self._action_store.add(
             ActionDescription(
-                "emulation:scan_network",
+                "dojo:scan_network",
                 ActionType.DIRECT,
                 "Scan the target network",
                 [
@@ -108,7 +65,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
 
         self._action_store.add(
             ActionDescription(
-                "emulation:find_services",
+                "dojo:find_services",
                 ActionType.DIRECT,
                 "Scan the target for services",
                 [
@@ -129,7 +86,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
 
         self._action_store.add(
             ActionDescription(
-                "emulation:exploit_server",
+                "dojo:exploit_server",
                 ActionType.DIRECT,
                 "Exploit the target service",
                 [
@@ -153,7 +110,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
 
         self._action_store.add(
             ActionDescription(
-                "emulation:find_data",
+                "dojo:find_data",
                 ActionType.DIRECT,
                 "Show a tree-like structure of the desired directory",
                 [
@@ -174,7 +131,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
 
         self._action_store.add(
             ActionDescription(
-                "emulation:execute_command",
+                "dojo:execute_command",
                 ActionType.DIRECT,
                 "Execute a command on a remote host",
                 [
@@ -195,7 +152,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
 
         self._action_store.add(
             ActionDescription(
-                "emulation:exfiltrate_data",
+                "dojo:exfiltrate_data",
                 ActionType.DIRECT,
                 "Get data from a file",
                 [
@@ -215,7 +172,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         )
 
     async def action_flow(self, message: Request) -> Tuple[int, Response]:
-        raise RuntimeError("`emulation` namespace does not support composite actions")
+        raise RuntimeError("`dojo` namespace does not support composite actions")
 
     def action_effect(self, message: Request, node: Node) -> Tuple[int, Response]:
         if not message.action:
@@ -231,14 +188,14 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         return []
 
     def process_default(self, message: Request, node: Node) -> Tuple[int, Response]:
-        print("Could not evaluate message. Tag in `emulation` namespace unknown. " + str(message))
+        print("Could not evaluate message. Tag in `dojo` namespace unknown. " + str(message))
         return 0, self._messaging.create_response(
             message, status=Status(StatusOrigin.SYSTEM, StatusValue.ERROR), session=message.session
         )
 
     def process_wait_for_session(self, message: Request, node: Node) -> Tuple[int, Response]:
         action = WaitForSession(message.id, message.metadata)
-        action.execute(self.cryton_proxy)
+        action.execute(self.proxy)
 
         if action.is_success():
             return 1, self._messaging.create_response(
@@ -257,7 +214,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
 
     def process_update_routing(self, message: Request, node: Node) -> Tuple[int, Response]:
         action = UpdateRouting(message.id, message.metadata, int(message.session.id))
-        action.execute(self.cryton_proxy)
+        action.execute(self.proxy)
 
         if action.is_success():
             return 1, self._messaging.create_response(
@@ -279,7 +236,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         target = message.action.parameters["to_network"].value
 
         action = ScanNetwork(message.id, message.metadata, target, int(message.session.id))
-        action.execute(self.cryton_proxy)
+        action.execute(self.proxy)
 
         if action.is_success():
             return 1, self._messaging.create_response(
@@ -302,7 +259,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         ports = message.action.parameters["services"].value
 
         action = FindServices(message.id, message.metadata, target, ports)
-        action.execute(self.cryton_proxy)
+        action.execute(self.proxy)
 
         if action.is_success():
             return 1, self._messaging.create_response(
@@ -325,7 +282,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         service = message.action.parameters["service"].value
 
         action = ExploitServer(message.id, message.metadata, target, service)
-        action.execute(self.cryton_proxy)
+        action.execute(self.proxy)
 
         if action.is_success():
             if service in ["ssh"]:
@@ -353,7 +310,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         directory = message.action.parameters["directory"].value
 
         action = FindData(message.id, message.metadata, int(message.session.id), directory)
-        action.execute(self.cryton_proxy)
+        action.execute(self.proxy)
 
         if action.is_success():
             return 1, self._messaging.create_response(
@@ -375,7 +332,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         command = message.action.parameters["command"].value
 
         action = ExecuteCommand(message.id, message.metadata, int(message.session.id), command)
-        action.execute(self.cryton_proxy)
+        action.execute(self.proxy)
 
         if action.is_success():
             return 1, self._messaging.create_response(
@@ -398,7 +355,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         file = message.action.parameters["data"].value
 
         action = ExfiltrateData(message.id, message.metadata, int(message.session.id), file)
-        action.execute(self.cryton_proxy)
+        action.execute(self.proxy)
 
         if action.is_success():
             return 1, self._messaging.create_response(
@@ -427,7 +384,7 @@ def create_cryton_model(
 
 
 behavioral_model_description = BehavioralModelDescription(
-    "emulation",
+    "dojo",
     "Perform simulated actions in the emulated environment through Cryton Proxy",
     create_cryton_model
 )

@@ -10,5 +10,5 @@ source path/to/cyst-core/venv/bin/activate
 
 and install this module.
 ```shell
-pip install -e path/to/cyst-models-demo2-cryton/
+pip install -e path/to/cyst-models-dojo-cryton/
 ```

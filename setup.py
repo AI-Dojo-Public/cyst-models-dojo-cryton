@@ -2,20 +2,15 @@ from setuptools import setup, find_packages, find_namespace_packages
 import pathlib
 
 here = pathlib.Path(__file__).parent.resolve()
-
-# Get the long description from the README file
 long_description = (here / 'README.md').read_text(encoding='utf-8')
 
-# Arguments marked as "Required" below must be included for upload to PyPI.
-# Fields marked as "Optional" may be commented out.
-
 setup(
-    name='cyst-models-cryton',
-    version='0.6.0',
-    description='API and runtime of the CYST framework',
+    name='cyst-models-dojo-cryton',
+    version='0.1.0',
+    description='Collection of CYST models used for the ai-dojo project',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://muni.cz/go/cyst/',
+    url='https://gitlab.ics.muni.cz/cyst/cyst-models-dojo-cryton',
     author='Martin Drasar et al.',
     author_email='drasar@ics.muni.cz',
     classifiers=[
@@ -40,55 +35,24 @@ setup(
         # that you indicate you support Python 3. These classifiers are *not*
         # checked by 'pip install'. See instead 'python_requires' below.
         'Programming Language :: Python :: 3',
-
         'Operating System :: OS Independent'
     ],
-    # TODO: remove `cyst_services.*`?
-    packages=find_packages(exclude=['tests', 'docs']) + find_namespace_packages(include=['cyst_models.*', 'cyst_services.*']),
+    packages=find_packages(
+        exclude=['tests', 'scenarios']
+    ) + find_namespace_packages(
+        include=['cyst_models.*', 'cyst_services.*']
+    ),
     python_requires='>=3.9, <4',
-
-    # This field lists other packages that your project depends on to run.
-    # Any package you put here will be installed by pip when your project is
-    # installed, so they must be valid existing projects.
-    #
-    # For an analysis of "install_requires" vs pip's requirements files see:
-    # https://packaging.python.org/discussions/install-requires-vs-requirements/
     install_requires=[
-        # TODO: add cyst?
-        'netaddr',  # TODO: will be removed once the new structure is implemented
-        'importlib_metadata',  # TODO: should be unnecessary
-        'deprecated',  # TODO: seems unused
+        'cyst-core',
+        'netaddr',
+        'importlib_metadata',  # TODO: remove and replace with importlib.metadata in 3.10
         'pyyaml',
         'requests'
     ],
-
-    # TODO: https://packaging.python.org/en/latest/guides/creating-and-discovering-plugins/#using-package-metadata
-    # To provide executable scripts, use entry points in preference to the
-    # "scripts" keyword. Entry points provide cross-platform support and allow
-    # `pip` to create the appropriate form of executable for the target
-    # platform.
-    #
-    # For example, the following would provide a command called `sample` which
-    # executes the function `main` from this package when invoked:
     entry_points={
         'cyst.models': [
             'cryton=cyst_models.cryton.main:behavioral_model_description'
         ],
-    },
-
-    # List additional URLs that are relevant to your project as a dict.
-    #
-    # This field corresponds to the "Project-URL" metadata fields:
-    # https://packaging.python.org/specifications/core-metadata/#project-url-multiple-use
-    #
-    # Examples listed include a pattern for specifying where the package tracks
-    # issues, where the source is hosted, where to say thanks to the package
-    # maintainers, and where to support the project financially. The key is
-    # what's used to render the link text on PyPI.
-    #project_urls={  # Optional
-    #    'Bug Reports': 'https://github.com/pypa/sampleproject/issues',
-    #    'Funding': 'https://donate.pypi.org',
-    #    'Say Thanks!': 'http://saythanks.io/to/example',
-    #    'Source': 'https://github.com/pypa/sampleproject/',
-    #},
+    }
 )

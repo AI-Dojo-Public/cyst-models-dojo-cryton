@@ -1,18 +1,13 @@
 import unittest
+from importlib_metadata import entry_points
 from typing import Optional
 
 from cyst.api.environment.environment import Environment, EnvironmentMode
 from cyst.api.environment.message import Status, StatusOrigin, StatusValue
-from cyst_services.scripted_actor.main import ScriptedActorControl
-
-from importlib_metadata import entry_points
-from typing import Optional, Any, Union
-from cyst.core.environment.proxy import EnvironmentProxy
-
 from cyst.api.host.service import ActiveService
-
-from cyst_services.scripted_actor.main import ScriptedActorControl, ScriptedActor
 from cyst.api.environment.message import StatusOrigin, StatusValue, Status, StatusDetail
+from cyst.core.environment.proxy import EnvironmentProxy
+from cyst_services.scripted_actor.main import ScriptedActorControl, ScriptedActor
 
 
 class TestBasicScan(unittest.TestCase):
