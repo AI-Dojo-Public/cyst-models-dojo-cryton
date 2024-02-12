@@ -1,15 +1,14 @@
 import copy
 from abc import ABC
 from typing import Optional
+from netaddr import IPAddress
 
-from cyst.api.logic.metadata import Metadata
 from cyst_models.cryton.proxy import Proxy
 
 
 class Action(ABC):
-    def __init__(self, message_id: int, metadata: Metadata, template: dict):
+    def __init__(self, message_id: int, template: dict):
         self._message_id = message_id
-        self._metadata = metadata
         self._template = template
         self._report: Optional[dict] = None
 
@@ -36,12 +35,21 @@ class Action(ABC):
             return True
         return False
 
-    def execute(self, proxy: Proxy) -> None:
+    def execute(self, proxy: Proxy, src_ip: IPAddress) -> None:
         """
         Runs the Cryton action in the correct context.
         :param proxy: Cryton proxy used for the execution
+        :param src_ip: Worker's address
         :return: None
         """
+        try:
+            agent_id = proxy.find_agent_id(str(src_ip))
+            is_init = False
+        except KeyError:
+            proxy.initialize_agent(str(src_ip))
+            agent_id = proxy.find_agent_id(str(src_ip))
+            is_init = True
+
         template = copy.deepcopy(self._template)
-        template["is_init"] = self._metadata.auxiliary.get("is_init", False)
-        self._report = proxy.execute_action(self._template, self._metadata.auxiliary["agent_id"])
+        template["is_init"] = is_init
+        self._report = proxy.execute_action(self._template, agent_id)

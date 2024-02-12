@@ -23,10 +23,8 @@ class EnvironmentCryton(EnvironmentMessaging, EnvironmentResources):
         self._configuration = environment.configuration
 
         self.services = []
-        self.agents: dict[int, int] = {}
         self._behavioral_models: dict[str, BehavioralModel] = environment._behavioral_models
 
-        self._agent_counter = 0
         self.proxy = Proxy(cryton_host, cryton_port)
         self._behavioral_models["dojo"].proxy = self.proxy
 
@@ -38,23 +36,8 @@ class EnvironmentCryton(EnvironmentMessaging, EnvironmentResources):
             {"node_name": node_name, "service_name": service_name, "attacker_service": attacker_service}
         )
 
-    def _add_agent(self, service_id: int):
-        self._agent_counter += 1
-        self.proxy.initialize_agent(self._agent_counter)
-        self.agents[service_id] = self._agent_counter
-
     def send_message(self, message: Message, delay: int = 0) -> None:
         request = message.cast_to(Request)
-        m = MessageImpl.cast_from(message)
-        service_id = hash((m.origin.id, m.src_service))
-        meta = Metadata()
-
-        if service_id not in self.agents.keys():
-            self._add_agent(service_id)
-            meta.auxiliary["is_init"] = True
-
-        meta.auxiliary["agent_id"] = self.agents[service_id]
-        request.set_metadata(meta)
 
         print(f"\n{'-'*50}\nAttacker executed action {request.action.id} on target {request.dst_ip}.")
 

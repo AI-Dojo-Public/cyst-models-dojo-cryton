@@ -1,9 +1,8 @@
-from cyst.api.logic.metadata import Metadata
 from cyst_models.cryton.actions.action import Action
 
 
 class ScanNetwork(Action):
-    def __init__(self, message_id: int, metadata: Metadata, target: str, session: int):
+    def __init__(self, message_id: int, target: str, session: int):
         template = {
             "name": f"scan-network-{message_id}",
             "step_type": "worker/execute",
@@ -19,7 +18,7 @@ class ScanNetwork(Action):
                 }
             }
         }
-        super().__init__(message_id, metadata, template)
+        super().__init__(message_id, template)
 
         # output
         # msf6 post(multi/gather/ping_sweep) > run
