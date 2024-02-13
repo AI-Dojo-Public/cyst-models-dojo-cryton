@@ -27,6 +27,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         self._cam = composite_action_manager
         self.proxy: Optional[Proxy] = None
 
+        # TODO: create action description in the action it self? would resolve the first todo here
         self._action_store.add(
             ActionDescription(
                 "dojo:wait_for_session",
