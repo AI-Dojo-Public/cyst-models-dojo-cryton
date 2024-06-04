@@ -1,21 +1,20 @@
-from cyst_models.cryton.actions.action import Action
+from cyst_models.cryton.actions.action import Action, ExternalResources
 
 
 class UpdateRouting(Action):
-    def __init__(self, message_id: int, session_id: int):
+    def __init__(self, message_id: int, caller_id: str, external_resources: ExternalResources, session_id: int):
         template = {
             "name": f"update-routing-table-{message_id}",
             "step_type": "worker/execute",
             "arguments": {
-                "module": "mod_msf",
+                "module": "metasploit",
                 "module_arguments": {
-                    "module_type": "post",
-                    "module": "multi/manage/autoroute",
-                    "module_options": {
+                    "module_name": "multi/manage/autoroute",
+                    "datastore": {
                         "CMD": "autoadd",
-                        "SESSION": session_id
-                    }
-                }
-            }
+                        "SESSION": session_id,
+                    },
+                },
+            },
         }
-        super().__init__(message_id, template)
+        super().__init__(message_id, template, caller_id, external_resources)

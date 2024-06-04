@@ -1,17 +1,24 @@
-from cyst_models.cryton.actions.action import Action
+from cyst_models.cryton.actions.action import Action, ExternalResources
 
 
 class ExecuteCommand(Action):
-    def __init__(self, message_id: int, session: int, command: str):
+    def __init__(
+        self,
+        message_id: int,
+        caller_id: str,
+        external_resources: ExternalResources,
+        session: int,
+        command: str,
+    ):
         template = {
             "name": f"execute-command-{message_id}",
             "step_type": "worker/execute",
             "arguments": {
-                "module": "mod_cmd",
+                "module": "command",
                 "module_arguments": {
                     "session_id": session,
-                    "cmd": command
-                }
-            }
+                    "command": command,
+                },
+            },
         }
-        super().__init__(message_id, template)
+        super().__init__(message_id, template, caller_id, external_resources)

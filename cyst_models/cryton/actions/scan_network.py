@@ -1,24 +1,22 @@
-from cyst_models.cryton.actions.action import Action
+from cyst_models.cryton.actions.action import Action, ExternalResources
 
 
 class ScanNetwork(Action):
-    def __init__(self, message_id: int, target: str, session: int):
+    def __init__(
+        self, message_id: int, caller_id: str, external_resources: ExternalResources, target: str, session: int
+    ):
         template = {
             "name": f"scan-network-{message_id}",
             "step_type": "worker/execute",
             "arguments": {
-                "module": "mod_msf",
+                "module": "metasploit",
                 "module_arguments": {
-                    "module_type": "post",
-                    "module": "multi/gather/ping_sweep",
-                    "module_options": {
-                        "SESSION": session,
-                        "RHOSTS": target
-                    }
-                }
-            }
+                    "module_name": "multi/gather/ping_sweep",
+                    "datastore": {"SESSION": session, "RHOSTS": target},
+                },
+            },
         }
-        super().__init__(message_id, template)
+        super().__init__(message_id, template, caller_id, external_resources)
 
         # output
         # msf6 post(multi/gather/ping_sweep) > run

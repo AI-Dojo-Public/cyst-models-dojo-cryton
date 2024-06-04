@@ -1,17 +1,25 @@
-from cyst_models.cryton.actions.action import Action
+from cyst_models.cryton.actions.action import Action, ExternalResources
 
 
 class FindData(Action):
-    def __init__(self, message_id: int, session: int, directory: str):
+    def __init__(
+        self,
+        message_id: int,
+        caller_id: str,
+        external_resources: ExternalResources,
+        session: int,
+        directory: str,
+    ):
         template = {
             "name": f"find-data-{message_id}",
             "step_type": "worker/execute",
             "arguments": {
-                "module": "mod_cmd",
+                "module": "command",
                 "module_arguments": {
                     "session_id": session,
-                    "cmd": f'find {directory} | sed -e "s/[^-][^\/]*\// |/g" -e "s/|\([^ ]\)/|-\1/"'
-                }
-            }
+                    "command": f'find {directory} | sed -e "s/[^-][^\/]*\// |/g" -e "s/|\([^ ]\)/|-\1/"',
+                    "timeout": 60,
+                },
+            },
         }
-        super().__init__(message_id, template)
+        super().__init__(message_id, template, caller_id, external_resources)

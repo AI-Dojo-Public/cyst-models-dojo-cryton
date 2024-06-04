@@ -1,17 +1,25 @@
-from cyst_models.cryton.actions.action import Action
+from cyst_models.cryton.actions.action import Action, ExternalResources
 
 
 class ExfiltrateData(Action):
-    def __init__(self, message_id: int, session: int, file: str):
+    def __init__(
+        self,
+        message_id: int,
+        caller_id: str,
+        external_resources: ExternalResources,
+        session: int,
+        file: str,
+    ):
         template = {
-            "name": f"find-data-{message_id}",
+            "name": f"exfiltrate-data-{message_id}",
             "step_type": "worker/execute",
             "arguments": {
-                "module": "mod_cmd",
+                "module": "command",
                 "module_arguments": {
                     "session_id": session,
-                    "cmd": f"cat {file}"
-                }
-            }
+                    "command": f"cat {file}",
+                    "timeout": 60,
+                },
+            },
         }
-        super().__init__(message_id, template)
+        super().__init__(message_id, template, caller_id, external_resources)
