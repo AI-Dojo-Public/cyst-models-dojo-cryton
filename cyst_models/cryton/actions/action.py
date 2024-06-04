@@ -1,15 +1,22 @@
 import copy
 from abc import ABC
 from typing import Optional
-from netaddr import IPAddress
 
-from cyst_models.cryton.proxy import Proxy
+from cyst.api.environment.external import ExternalResources
 
 
 class Action(ABC):
-    def __init__(self, message_id: int, template: dict):
+    def __init__(
+        self,
+        message_id: int,
+        template: dict,
+        caller_id: str,
+        external_resources: ExternalResources,
+    ):
         self._message_id = message_id
-        self._template = template
+        self.template = template
+        self._caller_id = caller_id
+        self._external_resources = external_resources
         self._report: Optional[dict] = None
 
     @property
@@ -31,25 +38,20 @@ class Action(ABC):
         return self.serialized_output["session_id"]
 
     def is_success(self) -> bool:
-        if self.report["result"] == "OK":
+        if self.report["result"] == "ok":
             return True
         return False
 
-    def execute(self, proxy: Proxy, src_ip: IPAddress) -> None:
+    async def execute(self) -> None:
         """
-        Runs the Cryton action in the correct context.
-        :param proxy: Cryton proxy used for the execution
-        :param src_ip: Worker's address
+        Runs Cryton action in the correct context using resource.
         :return: None
         """
-        try:
-            agent_id = proxy.find_agent_id(str(src_ip))
-            is_init = False
-        except KeyError:
-            proxy.initialize_agent(str(src_ip))
-            agent_id = proxy.find_agent_id(str(src_ip))
-            is_init = True
-
-        template = copy.deepcopy(self._template)
-        template["is_init"] = is_init
-        self._report = proxy.execute_action(self._template, agent_id)
+        resource = self._external_resources.create_resource("cryton://")
+        self._report = await self._external_resources.fetch_async(
+            resource,
+            {
+                "template": copy.deepcopy(self.template),
+                "node_id": self._caller_id.split(".")[0],
+            },
+        )

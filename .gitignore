@@ -4,3 +4,4 @@ venv/
 build/
 cyst_*.egg-info/
 dist/
+scenarios/cyst_*

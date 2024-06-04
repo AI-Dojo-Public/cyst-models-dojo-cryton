@@ -1,4 +1,4 @@
-from cyst_models.cryton.actions.wait_for_session import WaitForSession
+from cyst_models.cryton.actions.session import SessionListener, UpgradeSession
 from cyst_models.cryton.actions.update_routing import UpdateRouting
 from cyst_models.cryton.actions.scan_network import ScanNetwork
 from cyst_models.cryton.actions.find_services import FindServices

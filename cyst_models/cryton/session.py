@@ -5,7 +5,7 @@ from cyst.api.network.session import Session
 
 
 class MetasploitSession(Session):
-    def __init__(self, owner: str, session_id: int, parent: Optional['MetasploitSession'] = None):
+    def __init__(self, owner: str, session_id: int, parent: Optional["MetasploitSession"] = None):
         self._owner = owner
         self._id = session_id
         self._parent = parent
