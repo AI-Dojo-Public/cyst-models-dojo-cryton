@@ -223,7 +223,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         print("Could not evaluate message. Tag in `dojo` namespace unknown. " + str(message))
         return 0, self._messaging.create_response(
             message,
-            status=Status(StatusOrigin.SYSTEM, StatusValue.ERROR),
+            Status(StatusOrigin.SYSTEM, StatusValue.ERROR),
             session=message.session,
         )
 
@@ -235,13 +235,13 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
             return 1, self._messaging.create_response(
                 message,
                 Status(StatusOrigin.SERVICE, StatusValue.FAILURE),
-                action.output,
+                action.processed_output,
             )
 
         return 1, self._messaging.create_response(
             message,
             Status(StatusOrigin.SERVICE, StatusValue.SUCCESS),
-            action.output,
+            action.processed_output,
             MetasploitSession(message.src_service, action.session_id),
         )
 
@@ -260,13 +260,13 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
             return 1, self._messaging.create_response(
                 message,
                 Status(StatusOrigin.SERVICE, StatusValue.FAILURE),
-                action.output,
+                action.processed_output,
             )
 
         return 1, self._messaging.create_response(
             message,
             Status(StatusOrigin.SERVICE, StatusValue.SUCCESS),
-            action.output,
+            action.processed_output,
             MetasploitSession(message.src_service, action.session_id),
         )
 
@@ -279,19 +279,19 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         )
         await action.execute()
 
-        if action.is_success():
+        if not action.is_success():
             return 1, self._messaging.create_response(
                 message,
-                status=Status(StatusOrigin.NETWORK, StatusValue.SUCCESS),
-                session=message.session,
-                content=action.output,
+                Status(StatusOrigin.NETWORK, StatusValue.FAILURE),
+                action.processed_output,
+                message.session,
             )
 
         return 1, self._messaging.create_response(
             message,
-            status=Status(StatusOrigin.NETWORK, StatusValue.FAILURE),
-            session=message.session,
-            content=action.output,
+            Status(StatusOrigin.NETWORK, StatusValue.SUCCESS),
+            action.processed_output,
+            message.session,
         )
 
     async def process_scan_network(self, message: Request, node: Node) -> Tuple[int, Response]:
@@ -307,19 +307,16 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         )
         await action.execute()
 
-        if action.is_success():
+        if not action.is_success():
             return 1, self._messaging.create_response(
-                message,
-                status=Status(StatusOrigin.NETWORK, StatusValue.SUCCESS),
-                session=message.session,
-                content=action.output,
+                message, Status(StatusOrigin.NETWORK, StatusValue.FAILURE), action.processed_output, message.session
             )
 
         return 1, self._messaging.create_response(
             message,
-            status=Status(StatusOrigin.NETWORK, StatusValue.FAILURE),
-            session=message.session,
-            content=action.output,
+            Status(StatusOrigin.NETWORK, StatusValue.SUCCESS),
+            action.processed_output,
+            message.session,
         )
 
     async def process_find_services(self, message: Request, node: Node) -> Tuple[int, Response]:
@@ -336,19 +333,19 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         )
         await action.execute()
 
-        if action.is_success():
+        if not action.is_success():
             return 1, self._messaging.create_response(
                 message,
-                status=Status(StatusOrigin.NETWORK, StatusValue.SUCCESS),
-                session=message.session,
-                content=action.output,
+                Status(StatusOrigin.NETWORK, StatusValue.FAILURE),
+                action.processed_output,
+                message.session,
             )
 
         return 1, self._messaging.create_response(
             message,
-            status=Status(StatusOrigin.NETWORK, StatusValue.FAILURE),
-            session=message.session,
-            content=action.output,
+            Status(StatusOrigin.NETWORK, StatusValue.SUCCESS),
+            action.processed_output,
+            message.session,
         )
 
     async def process_exploit_server(self, message: Request, node: Node) -> Tuple[int, Response]:
@@ -365,24 +362,24 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         )
         await action.execute()
 
-        if action.is_success():
-            if service in ["ssh"]:
-                new_session = MetasploitSession(message.src_service, action.session_id)
-            else:
-                new_session = message.session
-
+        if not action.is_success():
             return 1, self._messaging.create_response(
                 message,
-                status=Status(StatusOrigin.SERVICE, StatusValue.SUCCESS),
-                session=new_session,
-                content=action.output,
+                Status(StatusOrigin.SERVICE, StatusValue.FAILURE),
+                action.processed_output,
+                message.session,
             )
+
+        if service in ["ssh"]:
+            new_session = MetasploitSession(message.src_service, action.session_id)
+        else:
+            new_session = message.session
 
         return 1, self._messaging.create_response(
             message,
-            status=Status(StatusOrigin.SERVICE, StatusValue.FAILURE),
-            session=message.session,
-            content=action.output,
+            Status(StatusOrigin.SERVICE, StatusValue.SUCCESS),
+            action.processed_output,
+            new_session,
         )
 
     async def process_find_data(self, message: Request, node: Node) -> Tuple[int, Response]:
@@ -399,20 +396,19 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         )
         await action.execute()
 
-        # TODO: `if not action.is_success():` instead (also update others)
-        if action.is_success():
+        if not action.is_success():
             return 1, self._messaging.create_response(
                 message,
-                status=Status(StatusOrigin.SERVICE, StatusValue.SUCCESS),
-                session=message.session,
-                content=action.output,
+                Status(StatusOrigin.SERVICE, StatusValue.FAILURE),
+                action.processed_output,
+                message.session,
             )
 
         return 1, self._messaging.create_response(
             message,
-            status=Status(StatusOrigin.SERVICE, StatusValue.FAILURE),
-            session=message.session,
-            content=action.output,
+            Status(StatusOrigin.SERVICE, StatusValue.SUCCESS),
+            action.processed_output,
+            message.session,
         )
 
     async def process_execute_command(self, message: Request, node: Node) -> Tuple[int, Response]:
@@ -428,19 +424,19 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         )
         await action.execute()
 
-        if action.is_success():
+        if not action.is_success():
             return 1, self._messaging.create_response(
                 message,
-                status=Status(StatusOrigin.SERVICE, StatusValue.SUCCESS),
-                session=message.session,
-                content=action.output,
+                Status(StatusOrigin.SERVICE, StatusValue.FAILURE),
+                action.processed_output,
+                message.session,
             )
 
         return 1, self._messaging.create_response(
             message,
-            status=Status(StatusOrigin.SERVICE, StatusValue.FAILURE),
-            session=message.session,
-            content=action.output,
+            Status(StatusOrigin.SERVICE, StatusValue.SUCCESS),
+            action.processed_output,
+            message.session,
         )
 
     async def process_exfiltrate_data(self, message: Request, node: Node) -> Tuple[int, Response]:
@@ -457,19 +453,19 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
         )
         await action.execute()
 
-        if action.is_success():
+        if not action.is_success():
             return 1, self._messaging.create_response(
                 message,
-                status=Status(StatusOrigin.SERVICE, StatusValue.SUCCESS),
-                session=message.session,
-                content=action.output,
+                Status(StatusOrigin.SERVICE, StatusValue.FAILURE),
+                action.processed_output,
+                message.session,
             )
 
         return 1, self._messaging.create_response(
             message,
-            status=Status(StatusOrigin.SERVICE, StatusValue.FAILURE),
-            session=message.session,
-            content=action.output,
+            Status(StatusOrigin.SERVICE, StatusValue.SUCCESS),
+            action.processed_output,
+            message.session,
         )
 
 

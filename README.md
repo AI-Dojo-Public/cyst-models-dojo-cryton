@@ -23,11 +23,17 @@ Each action
 Let's say we want to create an action that executes commands only on the Cryton Worker's host. You will use the same template as you would in Cryton.  
 Create a new Python file (for example `local_command_execution.py`) in `cyst_models/cryton/actions/` with the following content:
 ```python
-from cyst_models.cryton.actions.action import Action
+from cyst_models.cryton.actions.action import Action, ExternalResources
 
 
 class LocalCommandExecution(Action):
-    def __init__(self, message_id: int, command: str):
+    def __init__(
+        self,
+        message_id: int,
+        caller_id: str,
+        external_resources: ExternalResources,
+        command: str,
+    ):
         template = {
             "name": f"execute-command-locally-{message_id}",
             "step_type": "worker/execute",
@@ -38,7 +44,7 @@ class LocalCommandExecution(Action):
                 }
             }
         }
-        super().__init__(message_id, template)
+        super().__init__(message_id, template, caller_id, external_resources)
 
 ```
 
@@ -65,7 +71,7 @@ To use the action, we have to register it to our model's action store. Add the f
                         configuration.action.create_action_parameter_domain_any()
                     )
                 ],
-                ExecutionEnvironment(ExecutionEnvironmentType.EMULATION, "CRYTON")
+                PlatformSpecification(PlatformType.EMULATION, "docker+cryton"),
             )
         )
 
@@ -76,25 +82,31 @@ This tells the model that action with ID `dojo:local_command_execution` exists a
 ### Add action evaluation
 To actually make the action do something, we have to create a method that will execute and evaluate it.
 ```python
-    def process_local_command_execution(self, message: Request, node: Node) -> Tuple[int, Response]:
+    async def process_local_command_execution(self, message: Request, node: Node) -> Tuple[int, Response]:
         command = message.action.parameters["command"].value
 
-        action = LocalCommandExecution(message.id, command)
-        action.execute(self.proxy, message.src_ip)
+        action = LocalCommandExecution(
+            message.id,
+            message.platform_specific["caller_id"],
+            self._external,
+            command
+        )
+        
+        await action.execute()
 
-        if action.is_success():
+        if not action.is_success():
             return 1, self._messaging.create_response(
                 message,
-                status=Status(StatusOrigin.SERVICE, StatusValue.SUCCESS),
-                session=message.session,
-                content=action.output
+                Status(StatusOrigin.SERVICE, StatusValue.FAILURE),
+                action.processed_output,
+                message.session,
             )
 
         return 1, self._messaging.create_response(
             message,
-            status=Status(StatusOrigin.SERVICE, StatusValue.FAILURE),
-            session=message.session,
-            content=action.output
+            Status(StatusOrigin.SERVICE, StatusValue.SUCCESS),
+            action.processed_output,
+            message.session,
         )
 
 ```

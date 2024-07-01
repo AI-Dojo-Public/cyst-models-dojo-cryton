@@ -1,6 +1,6 @@
 import copy
 from abc import ABC
-from typing import Optional
+from typing import Optional, Union, Any
 
 from cyst.api.environment.external import ExternalResources
 
@@ -14,7 +14,7 @@ class Action(ABC):
         external_resources: ExternalResources,
     ):
         self._message_id = message_id
-        self.template = template
+        self._template = template
         self._caller_id = caller_id
         self._external_resources = external_resources
         self._report: Optional[dict] = None
@@ -30,7 +30,7 @@ class Action(ABC):
         return self.report["output"]
 
     @property
-    def serialized_output(self) -> dict:
+    def serialized_output(self) -> Union[dict, list]:
         return self.report["serialized_output"]
 
     @property
@@ -42,6 +42,13 @@ class Action(ABC):
             return True
         return False
 
+    @property
+    def processed_output(self) -> Any:
+        out = {"output": self.output}
+        out.update(self.serialized_output)
+
+        return out
+
     async def execute(self) -> None:
         """
         Runs Cryton action in the correct context using resource.
@@ -51,7 +58,7 @@ class Action(ABC):
         self._report = await self._external_resources.fetch_async(
             resource,
             {
-                "template": copy.deepcopy(self.template),
+                "template": copy.deepcopy(self._template),
                 "node_id": self._caller_id.split(".")[0],
             },
         )

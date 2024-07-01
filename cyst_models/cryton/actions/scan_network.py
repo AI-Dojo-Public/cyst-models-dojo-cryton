@@ -1,5 +1,7 @@
 from cyst_models.cryton.actions.action import Action, ExternalResources
 
+import re
+
 
 class ScanNetwork(Action):
     def __init__(
@@ -18,13 +20,32 @@ class ScanNetwork(Action):
         }
         super().__init__(message_id, template, caller_id, external_resources)
 
-        # output
-        # msf6 post(multi/gather/ping_sweep) > run
-        #
-        # [!] SESSION may not be compatible with this module:
-        # [!]  * incompatible session platform: python
-        # [*] Performing ping sweep for IP range 192.168.56.0/24
-        # [+] 	192.168.56.1 host found
-        # [+] 	192.168.56.2 host found
-        # [+] 	192.168.56.99 host found
-        # [*] Post module execution completed
+    @property
+    def processed_output(self):
+        out = super().processed_output
+
+        ips: list[str] = list()
+        for line in self.output.split("\n"):
+            if line.endswith("host found") and (x := re.search(r"(((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4})", line)):
+                ips.append(x.groups()[0])
+        out["ips"] = ips
+
+        return out
+
+
+# [!] SESSION may not be compatible with this module:
+# [!]  * incompatible session platform: python
+# [*] Performing ping sweep for IP range 192.168.56.0/24
+# [+] 	192.168.56.1 host found
+# [+] 	192.168.56.2 host found
+# [+] 	192.168.56.99 host found
+# [*] Post module execution completed
+
+# RHOSTS => 10.0.1.2
+# SESSION => 4
+# [*] Performing ping sweep for IP range 10.0.1.2
+# [+] 	10.0.1.2 host found
+# [*] Post module execution completed
+# w1qZfpSc3nLe8YH0WB3Y
+
+# ['10.0.1.2']
