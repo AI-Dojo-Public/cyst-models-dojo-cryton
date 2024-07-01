@@ -22,3 +22,8 @@ class ExecuteCommand(Action):
             },
         }
         super().__init__(message_id, template, caller_id, external_resources)
+
+
+# /usr/bin/mysqldump
+
+# {'output': '/usr/bin/mysqldump\n'}

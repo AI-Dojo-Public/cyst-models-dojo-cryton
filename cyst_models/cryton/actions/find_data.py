@@ -17,9 +17,28 @@ class FindData(Action):
                 "module": "command",
                 "module_arguments": {
                     "session_id": session,
-                    "command": f'find {directory} | sed -e "s/[^-][^\/]*\// |/g" -e "s/|\([^ ]\)/|-\1/"',
+                    "command": f'find {directory}',
                     "timeout": 60,
                 },
             },
         }
         super().__init__(message_id, template, caller_id, external_resources)
+
+    @property
+    def processed_output(self):
+        out = super().processed_output
+
+        files: list[str] = list()
+        for line in self.output.split("\n"):
+            files.append(line)
+
+        out["files"] = files
+
+        return out
+
+
+# /home/developer/
+# /home/developer/.bash_logout
+# /home/developer/.bashrc
+
+# ['/home/developer/', '/home/developer/.bash_logout', '/home/developer/.bashrc']
