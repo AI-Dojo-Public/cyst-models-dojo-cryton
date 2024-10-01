@@ -131,7 +131,7 @@ wordpress_db = NodeConfig(
             owner="mysql",
             version="8.0.31",
             local=False,
-            private_data=[DataConfig(owner="cdri", description="secret data for exfiltration")],
+            private_data=[DataConfig(owner="mysql", description="secret data for exfiltration", id="db")],
             access_level=AccessLevel.LIMITED,
             authentication_providers=[local_password_auth("mysql_pwd")],
             access_schemes=[
@@ -139,7 +139,7 @@ wordpress_db = NodeConfig(
                     authentication_providers=["mysql_pwd"],
                     authorization_domain=AuthorizationDomainConfig(
                         type=AuthorizationDomainType.LOCAL,
-                        authorizations=[AuthorizationConfig("cdri", AccessLevel.ELEVATED)],
+                        authorizations=[AuthorizationConfig("mysql", AccessLevel.ELEVATED)],
                     ),
                 )
             ],
@@ -217,7 +217,7 @@ developer = NodeConfig(
             access_level=AccessLevel.ELEVATED,
             parameters=[
                 (ServiceParameter.ENABLE_SESSION, True),
-                (ServiceParameter.SESSION_ACCESS_LEVEL, AccessLevel.LIMITED),
+                (ServiceParameter.SESSION_ACCESS_LEVEL, AccessLevel.ELEVATED),
             ],
             authentication_providers=[local_password_auth("user_pc_pwd")],
             access_schemes=[
@@ -227,8 +227,20 @@ developer = NodeConfig(
                         type=AuthorizationDomainType.LOCAL,
                         authorizations=[AuthorizationConfig("user", AccessLevel.ELEVATED)],
                     ),
-                )
+                ),
             ],
+            private_data=[
+                DataConfig(
+                    id="~/.bash_history",
+                    description="mysqldump -u user -h 192.168.3.10 --password=pass --no-tablespaces table",
+                    owner="user"
+                ),
+                DataConfig(
+                    id="/etc/passwd",
+                    description="users and stuff",
+                    owner="user"
+                )
+            ]
         ),
         PassiveServiceConfig(
             type="bash",
@@ -243,7 +255,6 @@ developer = NodeConfig(
     shell="",
     id="developer",
 )
-
 
 client3 = NodeConfig(
     active_services=[],
@@ -361,6 +372,8 @@ internal_router = RouterConfig(
         InterfaceConfig(IPAddress("192.168.3.1"), IPNetwork("192.168.3.0/24"), index=7),
         InterfaceConfig(IPAddress("192.168.3.1"), IPNetwork("192.168.3.0/24"), index=8),
         InterfaceConfig(IPAddress("192.168.3.1"), IPNetwork("192.168.3.0/24"), index=9),
+        InterfaceConfig(IPAddress("192.168.4.1"), IPNetwork("192.168.4.0/24"), index=10),
+        InterfaceConfig(IPAddress("192.168.4.1"), IPNetwork("192.168.4.0/24"), index=11),
     ],
     traffic_processors=[
         FirewallConfig(
@@ -374,6 +387,12 @@ internal_router = RouterConfig(
                         FirewallRule(
                             src_net=IPNetwork("192.168.2.0/24"),
                             dst_net=IPNetwork("192.168.3.0/24"),
+                            service="*",
+                            policy=FirewallPolicy.ALLOW,
+                        ),
+                        FirewallRule(
+                            src_net=IPNetwork("192.168.2.0/24"),
+                            dst_net=IPNetwork("192.168.2.0/24"),
                             service="*",
                             policy=FirewallPolicy.ALLOW,
                         ),
@@ -394,6 +413,18 @@ internal_router = RouterConfig(
                             dst_net=IPNetwork("192.168.3.0/24"),
                             service="*",
                             policy=FirewallPolicy.DENY,
+                        ),
+                        FirewallRule(
+                            src_net=IPNetwork("192.168.4.0/24"),
+                            dst_net=IPNetwork("192.168.2.0/24"),
+                            service="*",
+                            policy=FirewallPolicy.ALLOW,
+                        ),
+                        FirewallRule(
+                            src_net=IPNetwork("192.168.2.0/24"),
+                            dst_net=IPNetwork("192.168.4.0/24"),
+                            service="*",
+                            policy=FirewallPolicy.ALLOW,
                         ),
                     ],
                 )
@@ -423,6 +454,7 @@ inside_connections = [
     ConnectionConfig("client3", 0, "internal_router", 1),
     ConnectionConfig("client4", 0, "internal_router", 2),
     ConnectionConfig("client5", 0, "internal_router", 3),
+    ConnectionConfig("attacker_node", 0, "internal_router", 10),
     ConnectionConfig("wifi_client1", 0, "wifi_router", -1),
     ConnectionConfig("wifi_client2", 0, "wifi_router", -1),
     ConnectionConfig("wifi_client3", 0, "wifi_router", -1),
@@ -436,7 +468,6 @@ router_connections = [
 ]
 
 perimeter_connections = [
-    ConnectionConfig("attacker_node", 0, "perimeter_router", -1),
     ConnectionConfig("dns_node", 0, "perimeter_router", -1),
 ]
 
