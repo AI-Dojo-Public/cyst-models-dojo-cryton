@@ -52,7 +52,8 @@ setup(
     ],
     entry_points={
         'cyst.models': [
-            'cryton=cyst_models.cryton.main:behavioral_model_description'
+            'cryton=cyst_models.cryton.main:behavioral_model_description',
+            'sim=cyst_models.simulation.main:behavioral_model_description',
         ],
     }
 )

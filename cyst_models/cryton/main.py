@@ -54,7 +54,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
                 ActionType.DIRECT,
                 "Wait for the session to establish",
                 [],
-                PlatformSpecification(PlatformType.EMULATION, "docker+cryton"),
+                PlatformSpecification(PlatformType.REAL_TIME, "docker+cryton"),
             )
         )
 
@@ -64,7 +64,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
                 ActionType.DIRECT,
                 "Wait for the session to establish",
                 [],
-                PlatformSpecification(PlatformType.EMULATION, "docker+cryton"),
+                PlatformSpecification(PlatformType.REAL_TIME, "docker+cryton"),
             )
         )
 
@@ -74,7 +74,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
                 ActionType.DIRECT,
                 "Update routing table",
                 [],
-                PlatformSpecification(PlatformType.EMULATION, "docker+cryton"),
+                PlatformSpecification(PlatformType.REAL_TIME, "docker+cryton"),
             )
         )
 
@@ -90,7 +90,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
                         configuration.action.create_action_parameter_domain_any(),
                     )
                 ],
-                PlatformSpecification(PlatformType.EMULATION, "docker+cryton"),
+                PlatformSpecification(PlatformType.REAL_TIME, "docker+cryton"),
             )
         )
 
@@ -111,7 +111,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
                         configuration.action.create_action_parameter_domain_any(),
                     ),
                 ],
-                PlatformSpecification(PlatformType.EMULATION, "docker+cryton"),
+                PlatformSpecification(PlatformType.REAL_TIME, "docker+cryton"),
             )
         )
 
@@ -129,10 +129,10 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
                     ActionParameter(
                         ActionParameterType.NONE,
                         "service",
-                        configuration.action.create_action_parameter_domain_options("ftp", ["ftp"]),
+                        configuration.action.create_action_parameter_domain_options("ftp", ["ftp", "ssh"]),
                     ),
                 ],
-                PlatformSpecification(PlatformType.EMULATION, "docker+cryton"),
+                PlatformSpecification(PlatformType.REAL_TIME, "docker+cryton"),
             )
         )
 
@@ -153,7 +153,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
                         configuration.action.create_action_parameter_domain_any(),
                     ),
                 ],
-                PlatformSpecification(PlatformType.EMULATION, "docker+cryton"),
+                PlatformSpecification(PlatformType.REAL_TIME, "docker+cryton"),
             )
         )
 
@@ -174,7 +174,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
                         configuration.action.create_action_parameter_domain_any(),
                     ),
                 ],
-                PlatformSpecification(PlatformType.EMULATION, "docker+cryton"),
+                PlatformSpecification(PlatformType.REAL_TIME, "docker+cryton"),
             )
         )
 
@@ -195,7 +195,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
                         configuration.action.create_action_parameter_domain_any(),
                     ),
                 ],
-                PlatformSpecification(PlatformType.EMULATION, "docker+cryton"),
+                PlatformSpecification(PlatformType.REAL_TIME, "docker+cryton"),
             )
         )
 
@@ -211,7 +211,7 @@ class CrytonModel(BehavioralModel):  # TODO: make sure the actions have correct 
             raise ValueError("Action not provided")
 
         action_name = "_".join(message.action.fragments)
-        fn: Callable[[Request], Coroutine[Any, Any, Tuple[int, Response]]] = getattr(
+        fn: Callable[[Request, Node], Coroutine[Any, Any, Tuple[int, Response]]] = getattr(
             self, "process_" + action_name, self.process_default
         )
         return await fn(message, node)
@@ -483,5 +483,5 @@ behavioral_model_description = BehavioralModelDescription(
     "dojo",
     "Perform simulated actions in the emulated environment through Cryton Proxy",
     create_cryton_model,
-    PlatformSpecification(PlatformType.EMULATION, "docker+cryton"),
+    PlatformSpecification(PlatformType.REAL_TIME, "docker+cryton"),
 )
