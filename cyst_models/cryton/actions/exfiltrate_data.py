@@ -24,6 +24,13 @@ class ExfiltrateData(Action):
         }
         super().__init__(message_id, template, caller_id, external_resources)
 
+    @property
+    def processed_output(self):
+        out = super().processed_output
+        out["output"] = out["output"].removesuffix("\n")  # This is primarily for commands stored in the output
+
+        return out
+
 
 # root:x:0:0:root:/root:/bin/bash
 # daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin

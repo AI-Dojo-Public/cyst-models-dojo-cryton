@@ -180,7 +180,7 @@ class Scenario:
             [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
             {
                 "to_host": "192.168.2.10",
-                "command": "mysqldump -u cdri -h wordpress_db_node --password=cdri --no-tablespaces cdri | base64",
+                "command": action_response.content["output"],
             },
             session=action_response.session,
         )
