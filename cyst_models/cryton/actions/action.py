@@ -1,6 +1,7 @@
 import copy
 from abc import ABC
 from typing import Optional, Union, Any
+from datetime import datetime
 
 from cyst.api.environment.external import ExternalResources
 
@@ -48,6 +49,13 @@ class Action(ABC):
         out.update(self.serialized_output)
 
         return out
+
+    @property
+    def execution_time(self) -> int:
+        start_time = datetime.strptime(self.report["start_time"], "%Y-%m-%dT%H:%M:%S.%fZ")
+        finish_time = datetime.strptime(self.report["finish_time"], "%Y-%m-%dT%H:%M:%S.%fZ")
+
+        return int((finish_time - start_time).total_seconds())
 
     async def execute(self) -> None:
         """

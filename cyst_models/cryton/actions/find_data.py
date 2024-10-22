@@ -17,7 +17,7 @@ class FindData(Action):
                 "module": "command",
                 "module_arguments": {
                     "session_id": session,
-                    "command": f'find {directory}',
+                    "command": f"find {directory}",
                     "timeout": 60,
                 },
             },
@@ -25,16 +25,12 @@ class FindData(Action):
         super().__init__(message_id, template, caller_id, external_resources)
 
     @property
-    def processed_output(self):
-        out = super().processed_output
-
+    def processed_output(self) -> list[str]:
         files: list[str] = list()
         for line in self.output.split("\n"):
             files.append(line)
 
-        out["files"] = files
-
-        return out
+        return files
 
 
 # /home/developer/

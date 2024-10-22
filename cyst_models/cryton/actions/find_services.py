@@ -20,17 +20,13 @@ class FindServices(Action):
 
     @property
     def processed_output(self):
-        out = super().processed_output
-
         services: dict[str, list[int]] = dict()
         for line in self.output.split("\n"):
             if line.startswith("[+]") and (x := re.search(r"(((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}):(\d+)", line)):
                 if not services.get(x.groups()[0]):
                     services[x.groups()[0]] = list()
                 services[x.groups()[0]].append(int(x.groups()[-1]))
-        out["services"] = services
-
-        return out
+        return services
 
 
 # PORTS => 22

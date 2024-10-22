@@ -23,6 +23,10 @@ class ExecuteCommand(Action):
         }
         super().__init__(message_id, template, caller_id, external_resources)
 
+    @property
+    def processed_output(self) -> str:
+        return self.output
+
 
 # /usr/bin/mysqldump
 

@@ -21,16 +21,13 @@ class ScanNetwork(Action):
         super().__init__(message_id, template, caller_id, external_resources)
 
     @property
-    def processed_output(self):
-        out = super().processed_output
-
+    def processed_output(self) -> list[str]:
         ips: list[str] = list()
         for line in self.output.split("\n"):
             if line.endswith("host found") and (x := re.search(r"(((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4})", line)):
                 ips.append(x.groups()[0])
-        out["ips"] = ips
 
-        return out
+        return ips
 
 
 # [!] SESSION may not be compatible with this module:
