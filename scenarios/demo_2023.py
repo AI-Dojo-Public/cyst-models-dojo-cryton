@@ -1,27 +1,34 @@
+import sys
 from copy import deepcopy
 from typing import Optional, Union, Any
 
 from cyst.api.logic.action import Action
-from cyst.api.host.service import ActiveService
 from cyst.api.environment.message import Status, StatusOrigin, StatusValue, Response
 from cyst.api.logic.access import Authorization, AuthenticationToken
+from cyst.api.logic.exploit import Exploit
 from cyst.api.network.session import Session
-
+from cyst.api.environment.platform_specification import PlatformType, PlatformSpecification
 from cyst_services.scripted_actor.main import ScriptedActorControl
 from cyst.api.environment.environment import Environment
+from cyst.api.host.service import ActiveService
 
-from demo_2023_infrastructure import all_config_items
+from demo_2023_infrastructure import all_config_items, node_client_developer, node_client_1, exploit_bruteforce
 
 
 class Scenario:
-    def __init__(self):
-        self.environment = Environment.create("docker+cryton").configure(*all_config_items)
+    def __init__(self, platform: PlatformSpecification):
+        self.environment = Environment.create(platform)
+        self.attacker: ScriptedActorControl | None = None
+        self.actions: dict[str, Action] = dict()
+
+    def configure(self):
+        self.environment = self.environment.configure(*all_config_items)
         self.environment.control.init()
-        self.environment.control.add_pause_on_response("attacker_node.scripted_attacker")
+        self.environment.control.add_pause_on_response("node_attacker.scripted_attacker")
         attacker_service = self.environment.configuration.general.get_object_by_id(
-            "attacker_node.scripted_attacker", ActiveService
+            "node_attacker.scripted_attacker", ActiveService
         )
-        self.attacker: ScriptedActorControl = self.environment.configuration.service.get_service_interface(
+        self.attacker = self.environment.configuration.service.get_service_interface(
             attacker_service, ScriptedActorControl
         )
         self.actions = {action.id: action for action in self.environment.resources.action_store.get_prefixed("dojo")}
@@ -53,147 +60,150 @@ class Scenario:
     def execute_action(
         self,
         action_id: str,
+        target: str,
         ok_statuses: list[Status],
         action_parameters: dict[str, Any] = None,
-        target: str = "192.168.1.100",  # TODO: remove the default once the session/target translation is solved/created
         service: str = "",
         session: Session = None,
         auth: Union[Authorization, AuthenticationToken] = None,
+        exploit: Exploit = None,
     ) -> Response:
         print(f"\n{'-' * 50}\n{action_id}\nParameters: {action_parameters}\nOutput:\n")
         action = self._build_action(action_id, action_parameters)
+        if exploit:
+            action.set_exploit(exploit)
         self.attacker.execute_action(target, service, action, session, auth)
         result, state = self.environment.control.run()
         response = self.attacker.get_last_response()
         print(response.content)
 
         if response.status not in ok_statuses:
-            raise RuntimeError("Failed to open the session")
+            raise RuntimeError(f"Action failed with {response.status}.")
 
         return response
 
     def run(self):
-        # ------------------------------------
-        # Phishing
-        # ------------------------------------
-
         # Get the initial session from phishing
-        action_response = scenario.execute_action(
-            "dojo:wait_for_session", [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)]
-        )
-
-        # Upgrade session
-        action_response = scenario.execute_action(
-            "dojo:upgrade_session",
+        action_response = self.execute_action(
+            "dojo:phishing",
+            str(node_client_1.interfaces[0].ip),
             [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-            session=action_response.session,
+            service="bash",
         )
-
-        # Update MSF's routing table
-        action_response = scenario.execute_action(
-            "dojo:update_routing",
-            [
-                Status(StatusOrigin.NETWORK, StatusValue.SUCCESS),
-                Status(StatusOrigin.NETWORK, StatusValue.FAILURE),
-            ],
-            session=action_response.session,
-        )
-
-        # ------------------------------------
-        # Information gathering
-        # ------------------------------------
 
         # Scan new network
-        action_response = scenario.execute_action(
+        # In case you want to scan the whole network, use `node_client_1.interfaces[0].net` instead
+        action_response = self.execute_action(
             "dojo:scan_network",
+            str(node_client_1.interfaces[0].ip),
             [Status(StatusOrigin.NETWORK, StatusValue.SUCCESS)],
-            {"to_network": "192.168.2.10"},  # 192.168.2.10/24 scans the whole subnet
+            {"to_network": node_client_developer.interfaces[0].ip},
             session=action_response.session,
         )
 
-        # ------------------------------------
-        # Access the dev account
-        # ------------------------------------
-
         # Scan the hosts for ssh service
-        action_response = scenario.execute_action(
+        # In case you want to scan the whole network, use `node_client_1.interfaces[0].net` instead
+        action_response = self.execute_action(
             "dojo:find_services",
+            str(node_client_1.interfaces[0].ip),
             [Status(StatusOrigin.NETWORK, StatusValue.SUCCESS)],
-            {
-                "to_network": "192.168.2.10",
-                "services": "22",
-            },  # 192.168.2.10/24 scans the whole subnet
+            {"to_network": node_client_developer.interfaces[0].ip, "services": ["ssh"]},
             session=action_response.session,
         )
 
         # Bruteforce the ssh service
-        action_response = scenario.execute_action(
+        action_response = self.execute_action(
             "dojo:exploit_server",
+            str(node_client_developer.interfaces[0].ip),
             [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-            {"to_host": "192.168.2.10", "service": "ssh"},
             session=action_response.session,
+            service="ssh",
+            exploit=self.environment.resources.exploit_store.get_exploit(exploit_bruteforce.id)[0],
         )
-
-        # ------------------------------------
-        # Gather information from the dev account
-        # ------------------------------------
+        developer_auth = action_response.auth
 
         # Home directory listing
-        action_response = scenario.execute_action(
+        action_response = self.execute_action(
             "dojo:find_data",
+            str(node_client_developer.interfaces[0].ip),
             [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-            {"to_host": "192.168.2.10", "directory": "~/"},
+            {"directory": "~/"},
             session=action_response.session,
+            auth=developer_auth,
         )
 
         # Check for users
-        action_response = scenario.execute_action(
-            "dojo:exfiltrate_data",
+        action_response = self.execute_action(
+            "dojo:direct:exfiltrate_data",
+            str(node_client_developer.interfaces[0].ip),
             [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-            {"to_host": "192.168.2.10", "data": "/etc/passwd"},
+            {"path": "/etc/passwd"},
             session=action_response.session,
-        )
-
-        # Check for mysqldump
-        action_response = scenario.execute_action(
-            "dojo:execute_command",
-            [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-            {"to_host": "192.168.2.10", "command": "which mysqldump"},
-            session=action_response.session,
+            auth=developer_auth,
         )
 
         # Check bash history
-        action_response = scenario.execute_action(
-            "dojo:exfiltrate_data",
+        action_response = self.execute_action(
+            "dojo:direct:exfiltrate_data",
+            str(node_client_developer.interfaces[0].ip),
             [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-            {"to_host": "192.168.2.10", "data": "~/.bash_history"},
+            {"path": "~/.bash_history"},
             session=action_response.session,
+            auth=developer_auth,
         )
+        mysqldump_command = action_response.content
 
-        # ------------------------------------
-        # Get data from DB
-        # ------------------------------------
-
-        # Get data from DB
-        action_response = scenario.execute_action(
+        # Check for mysqldump
+        action_response = self.execute_action(
             "dojo:execute_command",
+            str(node_client_developer.interfaces[0].ip),
             [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-            {
-                "to_host": "192.168.2.10",
-                "command": action_response.content["output"],
-            },
+            {"command": "which mysqldump"},
             session=action_response.session,
+            auth=developer_auth,
+        )
+
+        # Get data from DB
+        action_response = self.execute_action(
+            "dojo:execute_command",
+            str(node_client_developer.interfaces[0].ip),
+            [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
+            {"command": mysqldump_command},
+            session=action_response.session,
+            auth=developer_auth,
         )
 
 
-# TODO: add defaults to action's parameters
-if __name__ == "__main__":
-    scenario = Scenario()
-    scenario.display_actions()
+def main():
+    try:
+        env = sys.argv[1]
+    except IndexError:
+        print("Choose 'real' or 'simu'. -> demo_2023.py simu")
+        exit(1)
 
     try:
-        scenario.run()
-    except:
-        pass
+        debug = sys.argv[2]
+    except IndexError:
+        debug = ""
 
-    scenario.finish()
+    if env == "real":
+        platform = PlatformSpecification(PlatformType.REAL_TIME, "docker+cryton")
+    else:
+        platform = PlatformSpecification(PlatformType.SIMULATED_TIME, "CYST")
+
+    scenario = Scenario(platform)
+    try:
+        scenario.configure()
+        scenario.display_actions()
+        scenario.run()
+    except Exception as ex:
+        print(str(ex))
+        if debug:
+            input("Press enter to stop the scenario... ")
+        raise ex
+    finally:
+        scenario.finish()
+
+
+if __name__ == "__main__":
+    main()
