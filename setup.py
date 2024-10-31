@@ -44,7 +44,7 @@ setup(
     ),
     python_requires='>=3.9, <4',
     install_requires=[
-        'cyst-core',
+        'cyst-core>=0.6.0a0',
         'netaddr',
         'importlib_metadata',  # TODO: remove and replace with importlib.metadata in 3.10
         'pyyaml',
