@@ -6,6 +6,7 @@ import asyncio
 import random
 
 from cyst.api.environment.configuration import EnvironmentConfiguration
+from cyst.api.environment.infrastructure import EnvironmentInfrastructure
 from cyst.api.environment.message import (
     Request,
     Response,
@@ -40,6 +41,7 @@ class SimulationModel(BehavioralModel):
         resources: EnvironmentResources,
         policy: EnvironmentPolicy,
         messaging: EnvironmentMessaging,
+        infrastructure: EnvironmentInfrastructure,
         composite_action_manager: CompositeActionManager,
     ) -> None:
         self._configuration = configuration
@@ -48,6 +50,7 @@ class SimulationModel(BehavioralModel):
         self._exploit_store = resources.exploit_store
         self._policy = policy
         self._messaging = messaging
+        self._infrastructure = infrastructure
         self._cam = composite_action_manager
 
         self._action_store.add(
@@ -463,9 +466,10 @@ def create_simulation_model(
     resources: EnvironmentResources,
     policy: EnvironmentPolicy,
     messaging: EnvironmentMessaging,
+    infrastructure: EnvironmentInfrastructure,
     composite_action_manager: CompositeActionManager,
 ) -> BehavioralModel:
-    return SimulationModel(configuration, resources, policy, messaging, composite_action_manager)
+    return SimulationModel(configuration, resources, policy, messaging, infrastructure, composite_action_manager)
 
 
 behavioral_model_description = BehavioralModelDescription(
