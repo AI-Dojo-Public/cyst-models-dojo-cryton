@@ -329,7 +329,7 @@ class SimulationModel(BehavioralModel):
                 #running_services[result.src_ip] = list(
                 #    filter(lambda service: service in services, [c[0] for c in result.content])
                 #)
-                running_services.append({"ip": str(result.src_ip), "services": [{"name": service[0], "version": service[1]} for service in result.content]})
+                running_services.append({"ip": str(result.src_ip), "services": [{"name": service[0], "version": str(service[1])} for service in result.content]})
 
         return msecs(1), self._messaging.create_response(
             message, Status(StatusOrigin.NETWORK, StatusValue.SUCCESS), running_services, message.session, message.auth
