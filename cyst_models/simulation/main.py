@@ -1,4 +1,4 @@
-from typing import Tuple, Callable, Union, List, Coroutine, Any, Iterable
+from typing import Tuple, Callable, Union, List, Coroutine, Any, Iterable, Dict
 from copy import deepcopy
 from cyst.api.logic.access import AccessLevel
 from netaddr import IPNetwork
@@ -304,35 +304,32 @@ class SimulationModel(BehavioralModel):
         target = message.action.parameters["to_network"].value
         targets = target.iter_hosts() if isinstance(target, IPNetwork) else [target]
 
-        scan_results = await self._scan_multiple(targets, message)
-        #running_hosts = [result.src_ip if result.status.value == StatusValue.SUCCESS else ... for result in results]
-
-        # While the scan should in theory return only IP addresses that are reachable, following the discussion with
-        # CVUT, we are returning also the services
-        result = []
-        for scan in scan_results:
-            if scan.status.value == StatusValue.SUCCESS:
-                result.append({
-                    "ip": str(scan.src_ip),
-                    "services": [{"name": service[0], "version": str(service[1])} for service in scan.content]
-                })
+        results = await self._scan_multiple(targets, message)
+        running_hosts = []
+        for response in results:
+            if response.status.value == StatusValue.SUCCESS:
+                running_hosts.append(str(response.src_ip))
 
         return msecs(1), self._messaging.create_response(
-            message, Status(StatusOrigin.NETWORK, StatusValue.SUCCESS), result, message.session, message.auth
+            message, Status(StatusOrigin.NETWORK, StatusValue.SUCCESS), running_hosts, message.session, message.auth
         )
 
     async def process_find_services(self, message: Request) -> Tuple[Duration, Response]:
-        target = message.action.parameters["to_network"].value
-        services = message.action.parameters["services"].value
+        target_network = None
+        if "to_network" in message.action.parameters:
+            target_network = message.action.parameters["to_network"].value
+        # services = message.action.parameters["services"].value
 
-        targets = target.iter_hosts() if isinstance(target, IPNetwork) else [target]
+        targets = target_network.iter_hosts() if target_network and isinstance(target_network, IPNetwork) else [message.dst_ip]
         results = await self._scan_multiple(targets, message)
-        running_services: dict[str, list[str]] = dict()
+        #running_services: Dict[str, List[Dict]] = {}
+        running_services: List[Dict[str, str]] = []
         for result in results:
             if result.status.value == StatusValue.SUCCESS:
-                running_services[result.src_ip] = list(
-                    filter(lambda service: service in services, [c[0] for c in result.content])
-                )
+                #running_services[result.src_ip] = list(
+                #    filter(lambda service: service in services, [c[0] for c in result.content])
+                #)
+                running_services.append({"ip": str(result.src_ip), "services": [{"name": service[0], "version": service[1]} for service in result.content]})
 
         return msecs(1), self._messaging.create_response(
             message, Status(StatusOrigin.NETWORK, StatusValue.SUCCESS), running_services, message.session, message.auth
