@@ -304,11 +304,21 @@ class SimulationModel(BehavioralModel):
         target = message.action.parameters["to_network"].value
         targets = target.iter_hosts() if isinstance(target, IPNetwork) else [target]
 
-        results = await self._scan_multiple(targets, message)
-        running_hosts = [result.src_ip if result.status.value == StatusValue.SUCCESS else ... for result in results]
+        scan_results = await self._scan_multiple(targets, message)
+        #running_hosts = [result.src_ip if result.status.value == StatusValue.SUCCESS else ... for result in results]
+
+        # While the scan should in theory return only IP addresses that are reachable, following the discussion with
+        # CVUT, we are returning also the services
+        result = []
+        for scan in scan_results:
+            if scan.status.value == StatusValue.SUCCESS:
+                result.append({
+                    "ip": str(scan.src_ip),
+                    "services": [{"name": service[0], "version": str(service[1])} for service in scan.content]
+                })
 
         return msecs(1), self._messaging.create_response(
-            message, Status(StatusOrigin.NETWORK, StatusValue.SUCCESS), running_hosts, message.session, message.auth
+            message, Status(StatusOrigin.NETWORK, StatusValue.SUCCESS), result, message.session, message.auth
         )
 
     async def process_find_services(self, message: Request) -> Tuple[Duration, Response]:
