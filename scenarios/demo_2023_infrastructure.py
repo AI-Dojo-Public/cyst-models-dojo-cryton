@@ -58,7 +58,7 @@ node_attacker = NodeConfig(
         #     type="empire", owner="empire", version="4.10.0", access_level=AccessLevel.LIMITED
         # ),
         PassiveServiceConfig(
-            type="metasploit", owner="msf", version="0.1.0", local=True, access_level=AccessLevel.LIMITED
+            name="metasploit", owner="msf", version="0.1.0", local=True, access_level=AccessLevel.LIMITED
         ),
     ],
     traffic_processors=[],
@@ -71,7 +71,7 @@ node_dns = NodeConfig(
     active_services=[],
     passive_services=[
         PassiveServiceConfig(
-            type="coredns",
+            name="coredns",
             owner="coredns",
             version="1.11.1",
             local=False,
@@ -88,7 +88,7 @@ node_wordpress = NodeConfig(
     active_services=[],
     passive_services=[
         PassiveServiceConfig(
-            type="wordpress",
+            name="wordpress",
             owner="wordpress",
             version="6.1.1",
             local=False,
@@ -115,7 +115,7 @@ node_database = NodeConfig(
     active_services=[],
     passive_services=[
         PassiveServiceConfig(
-            type="mysql",
+            name="mysql",
             owner="mysql",
             version="8.0.31",
             local=False,
@@ -143,7 +143,7 @@ node_vsftpd = NodeConfig(
     active_services=[],
     passive_services=[
         PassiveServiceConfig(
-            type="vsftpd", owner="vsftpd", version="2.3.4", local=False, access_level=AccessLevel.LIMITED
+            name="vsftpd", owner="vsftpd", version="2.3.4", local=False, access_level=AccessLevel.LIMITED
         )
     ],
     traffic_processors=[],
@@ -156,7 +156,7 @@ node_mail = NodeConfig(
     active_services=[],
     passive_services=[
         PassiveServiceConfig(
-            type="haraka", owner="haraka", version="2.3.4", local=False, access_level=AccessLevel.LIMITED
+            name="haraka", owner="haraka", version="2.3.4", local=False, access_level=AccessLevel.LIMITED
         )
     ],
     traffic_processors=[],
@@ -168,7 +168,7 @@ node_mail = NodeConfig(
 node_chat = NodeConfig(
     active_services=[],
     passive_services=[
-        PassiveServiceConfig(type="tchat", owner="chat", version="2.3.4", local=False, access_level=AccessLevel.LIMITED)
+        PassiveServiceConfig(name="tchat", owner="chat", version="2.3.4", local=False, access_level=AccessLevel.LIMITED)
     ],
     traffic_processors=[],
     interfaces=[InterfaceConfig(IPAddress(network_server.first + 14), network_server)],
@@ -180,7 +180,7 @@ node_client_developer = NodeConfig(
     active_services=[],
     passive_services=[
         PassiveServiceConfig(
-            type="ssh",
+            name="ssh",
             owner="ssh",
             version="5.1.4",
             local=False,
@@ -209,7 +209,7 @@ node_client_developer = NodeConfig(
             ],
         ),
         PassiveServiceConfig(
-            type="bash",
+            name="bash",
             owner="bash",
             version="8.1.0",
             local=True,
@@ -225,7 +225,7 @@ node_client_developer = NodeConfig(
 node_client_1 = NodeConfig(
     active_services=[],
     passive_services=[
-        PassiveServiceConfig(type="bash", owner="bash", version="1.2.3", local=True, access_level=AccessLevel.ELEVATED),
+        PassiveServiceConfig(name="bash", owner="bash", version="1.2.3", local=True, access_level=AccessLevel.ELEVATED),
     ],
     traffic_processors=[],
     interfaces=[InterfaceConfig(IPAddress(network_internal.first + 11), network_internal)],
@@ -236,7 +236,7 @@ node_client_1 = NodeConfig(
 node_client_2 = NodeConfig(
     active_services=[],
     passive_services=[
-        PassiveServiceConfig(type="bash", owner="bash", version="8.1.0", local=True, access_level=AccessLevel.ELEVATED),
+        PassiveServiceConfig(name="bash", owner="bash", version="8.1.0", local=True, access_level=AccessLevel.ELEVATED),
     ],
     traffic_processors=[],
     interfaces=[InterfaceConfig(IPAddress(network_internal.first + 12), network_internal)],
@@ -247,7 +247,7 @@ node_client_2 = NodeConfig(
 node_client_3 = NodeConfig(
     active_services=[],
     passive_services=[
-        PassiveServiceConfig(type="bash", owner="bash", version="8.1.0", local=True, access_level=AccessLevel.ELEVATED),
+        PassiveServiceConfig(name="bash", owner="bash", version="8.1.0", local=True, access_level=AccessLevel.ELEVATED),
     ],
     traffic_processors=[],
     interfaces=[InterfaceConfig(IPAddress(network_internal.first + 13), network_internal)],
@@ -373,27 +373,27 @@ router_internal = RouterConfig(
 # Connection definitions
 # -----------------------------------------------------------------------------
 connections_internal_router = [
-    ConnectionConfig(node_wordpress.id, 0, router_internal.id, 1),
-    ConnectionConfig(node_database.id, 0, router_internal.id, 2),
-    ConnectionConfig(node_vsftpd.id, 0, router_internal.id, 3),
-    ConnectionConfig(node_chat.id, 0, router_internal.id, 4),
-    ConnectionConfig(node_mail.id, 0, router_internal.id, 5),
-    ConnectionConfig(node_client_developer.id, 0, router_internal.id, 6),
-    ConnectionConfig(node_client_1.id, 0, router_internal.id, 7),
-    ConnectionConfig(node_client_2.id, 0, router_internal.id, 8),
-    ConnectionConfig(node_client_3.id, 0, router_internal.id, 9),
-    ConnectionConfig(node_client_4.id, 0, router_internal.id, 10),
-    ConnectionConfig(node_client_5.id, 0, router_internal.id, 11),
-    ConnectionConfig(node_client_6.id, 0, router_internal.id, 12),
+    ConnectionConfig(node_wordpress, 0, router_internal, 1),
+    ConnectionConfig(node_database, 0, router_internal, 2),
+    ConnectionConfig(node_vsftpd, 0, router_internal, 3),
+    ConnectionConfig(node_chat, 0, router_internal, 4),
+    ConnectionConfig(node_mail, 0, router_internal, 5),
+    ConnectionConfig(node_client_developer, 0, router_internal, 6),
+    ConnectionConfig(node_client_1, 0, router_internal, 7),
+    ConnectionConfig(node_client_2, 0, router_internal, 8),
+    ConnectionConfig(node_client_3, 0, router_internal, 9),
+    ConnectionConfig(node_client_4, 0, router_internal, 10),
+    ConnectionConfig(node_client_5, 0, router_internal, 11),
+    ConnectionConfig(node_client_6, 0, router_internal, 12),
 ]
 
 connections_perimeter_router = [
-    ConnectionConfig(node_attacker.id, 0, router_perimeter.id, 1),
-    ConnectionConfig(node_dns.id, 0, router_perimeter.id, 2),
+    ConnectionConfig(node_attacker, 0, router_perimeter, 1),
+    ConnectionConfig(node_dns, 0, router_perimeter, 2),
 ]
 
 connections_routes = [
-    ConnectionConfig(router_perimeter.id, 0, router_internal.id, 0),
+    ConnectionConfig(router_perimeter, 0, router_internal, 0),
 ]
 
 # -----------------------------------------------------------------------------
@@ -406,14 +406,14 @@ exploit_vsftpd = ExploitConfig(
 )
 
 exploit_phishing = ExploitConfig(
-    services=[VulnerableServiceConfig(name="bash", min_version="1.2.3", max_version="1.2.3")],
+    services=[VulnerableServiceConfig(service="bash", min_version="1.2.3", max_version="1.2.3")],
     locality=ExploitLocality.REMOTE,
     category=ExploitCategory.CODE_EXECUTION,
     id="phishing_exploit",
 )
 
 exploit_bruteforce = ExploitConfig(
-    services=[VulnerableServiceConfig(name="ssh", min_version="5.1.4", max_version="5.1.4")],
+    services=[VulnerableServiceConfig(service="ssh", min_version="5.1.4", max_version="5.1.4")],
     locality=ExploitLocality.REMOTE,
     category=ExploitCategory.CODE_EXECUTION,
 )
