@@ -11,11 +11,9 @@ class ExecuteCommand(Action):
         command: str,
     ):
         template = {
-            "name": f"execute-command-{message_id}",
-            "step_type": "worker/execute",
-            "arguments": {
+            f"execute-command-{message_id}": {
                 "module": "command",
-                "module_arguments": {
+                "arguments": {
                     "session_id": session,
                     "command": command,
                 },

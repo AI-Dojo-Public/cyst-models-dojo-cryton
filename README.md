@@ -35,13 +35,11 @@ class LocalCommandExecution(Action):
         command: str,
     ):
         template = {
-            "name": f"execute-command-locally-{message_id}",
-            "step_type": "worker/execute",
-            "arguments": {
+            f"execute-command-locally-{message_id}": {
                 "module": "mod_cmd",
-                "module_arguments": {
+                "arguments": {
                     "cmd": command
-                }
+                },
             }
         }
         super().__init__(message_id, template, caller_id, external_resources)

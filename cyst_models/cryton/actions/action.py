@@ -39,7 +39,7 @@ class Action(ABC):
         return self.serialized_output["session_id"]
 
     def is_success(self) -> bool:
-        if self.report["result"] == "ok":
+        if self.report["state"] == "FINISHED":
             return True
         return False
 

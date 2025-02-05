@@ -6,7 +6,7 @@ long_description = (here / 'README.md').read_text(encoding='utf-8')
 
 setup(
     name='cyst-models-dojo-cryton',
-    version='0.1.0',
+    version='0.2.0',
     description='Collection of CYST models used for the ai-dojo project',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -42,13 +42,10 @@ setup(
     ) + find_namespace_packages(
         include=['cyst_models.*', 'cyst_services.*']
     ),
-    python_requires='>=3.9, <4',
+    python_requires='>=3.11',
     install_requires=[
-        'cyst-core>=0.6.0a0',
-        'netaddr',
-        'importlib_metadata',  # TODO: remove and replace with importlib.metadata in 3.10
-        'pyyaml',
-        'requests'
+        'cyst-core>=0.6.0',
+        'cyst-platforms-docker-cryton>=0.2.0',
     ],
     entry_points={
         'cyst.models': [
