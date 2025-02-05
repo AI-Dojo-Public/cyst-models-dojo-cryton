@@ -10,6 +10,7 @@ from cyst.api.environment.message import (
 )
 from cyst.api.environment.messaging import EnvironmentMessaging
 from cyst.api.environment.policy import EnvironmentPolicy
+from cyst.api.environment.infrastructure import EnvironmentInfrastructure
 from cyst.api.environment.resources import EnvironmentResources
 from cyst.api.logic.action import (
     ActionDescription,
@@ -47,12 +48,14 @@ class CrytonModel(BehavioralModel):
         resources: EnvironmentResources,
         policy: EnvironmentPolicy,
         messaging: EnvironmentMessaging,
+        infrastructure: EnvironmentInfrastructure,
         composite_action_manager: CompositeActionManager,
     ) -> None:
         self._configuration = configuration
         self._external = resources.external
         self._action_store = resources.action_store
         self._exploit_store = resources.exploit_store
+        self._infrastructure = infrastructure
         self._policy = policy
         self._messaging = messaging
         self._cam = composite_action_manager
@@ -464,9 +467,10 @@ def create_cryton_model(
     resources: EnvironmentResources,
     policy: EnvironmentPolicy,
     messaging: EnvironmentMessaging,
+    infrastructure: EnvironmentInfrastructure,
     composite_action_manager: CompositeActionManager,
 ) -> BehavioralModel:
-    return CrytonModel(configuration, resources, policy, messaging, composite_action_manager)
+    return CrytonModel(configuration, resources, policy, messaging, infrastructure, composite_action_manager)
 
 
 behavioral_model_description = BehavioralModelDescription(

@@ -11,16 +11,14 @@ class ExfiltrateData(Action):
         file: str,
     ):
         template = {
-            "name": f"exfiltrate-data-{message_id}",
-            "step_type": "worker/execute",
-            "arguments": {
+            f"exfiltrate-data-{message_id}": {
                 "module": "command",
-                "module_arguments": {
+                "arguments": {
                     "session_id": session,
                     "command": f"cat {file}",
                     "timeout": 60,
                 },
-            },
+            }
         }
         super().__init__(message_id, template, caller_id, external_resources)
 

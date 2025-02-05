@@ -8,15 +8,13 @@ class ScanNetwork(Action):
         self, message_id: int, caller_id: str, external_resources: ExternalResources, target: str, session: int
     ):
         template = {
-            "name": f"scan-network-{message_id}",
-            "step_type": "worker/execute",
-            "arguments": {
+            f"scan-network-{message_id}": {
                 "module": "metasploit",
-                "module_arguments": {
+                "arguments": {
                     "module_name": "multi/gather/ping_sweep",
                     "datastore": {"SESSION": session, "RHOSTS": target},
                 },
-            },
+            }
         }
         super().__init__(message_id, template, caller_id, external_resources)
 
