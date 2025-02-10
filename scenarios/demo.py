@@ -12,7 +12,7 @@ from cyst_services.scripted_actor.main import ScriptedActorControl
 from cyst.api.environment.environment import Environment
 from cyst.api.host.service import ActiveService
 
-from demo_2023_infrastructure import all_config_items, node_client_developer, node_client_1, exploit_bruteforce
+from demo_infrastructure import all_config_items, node_client_developer, node_client_1, exploit_bruteforce
 
 
 class Scenario:
@@ -88,7 +88,7 @@ class Scenario:
             "dojo:phishing",
             str(node_client_1.interfaces[0].ip),
             [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-            service="bash",
+            service="python3",
         )
 
         # Scan new network
@@ -128,16 +128,6 @@ class Scenario:
             str(node_client_developer.interfaces[0].ip),
             [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
             {"directory": "~/"},
-            session=action_response.session,
-            auth=developer_auth,
-        )
-
-        # Check for users
-        action_response = self.execute_action(
-            "dojo:direct:exfiltrate_data",
-            str(node_client_developer.interfaces[0].ip),
-            [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-            {"path": "/etc/passwd"},
             session=action_response.session,
             auth=developer_auth,
         )

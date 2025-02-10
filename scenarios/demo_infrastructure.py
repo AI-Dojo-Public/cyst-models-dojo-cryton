@@ -29,6 +29,10 @@ from cyst.api.logic.access import (
 )
 from cyst.api.network.firewall import FirewallPolicy, FirewallChainType, FirewallRule
 
+from pathlib import Path
+
+with open(f"{Path(__file__).parent}/phishing.py") as f:
+    phishing_file = f.read()
 
 # -----------------------------------------------------------------------------
 # Network definitions
@@ -156,7 +160,7 @@ node_mail = NodeConfig(
     active_services=[],
     passive_services=[
         PassiveServiceConfig(
-            name="haraka", owner="haraka", version="2.3.4", local=False, access_level=AccessLevel.LIMITED
+            name="dovecot-imapd", owner="haraka", version="2.3.4", local=False, access_level=AccessLevel.LIMITED
         )
     ],
     traffic_processors=[],
@@ -204,13 +208,12 @@ node_client_developer = NodeConfig(
                     id="~/.bash_history",
                     description=f"mysqldump -u user -h {node_database.interfaces[0].ip} --password=pass --no-tablespaces table",
                     owner="user",
-                ),
-                DataConfig(id="/etc/passwd", description="users and stuff", owner="user"),
+                )
             ],
         ),
         PassiveServiceConfig(
-            name="bash",
-            owner="bash",
+            name="mysql-client",
+            owner="user",
             version="8.1.0",
             local=True,
             access_level=AccessLevel.ELEVATED,
@@ -225,7 +228,20 @@ node_client_developer = NodeConfig(
 node_client_1 = NodeConfig(
     active_services=[],
     passive_services=[
-        PassiveServiceConfig(name="bash", owner="bash", version="1.2.3", local=True, access_level=AccessLevel.ELEVATED),
+        PassiveServiceConfig(
+            name="python3",
+            owner="user",
+            version="3.11.1",
+            local=True,
+            access_level=AccessLevel.ELEVATED,
+            private_data=[
+                DataConfig(
+                    id="/entrypoints/phishing.py",
+                    description=phishing_file,
+                    owner="user",
+                )
+            ]
+        ),
     ],
     traffic_processors=[],
     interfaces=[InterfaceConfig(IPAddress(network_internal.first + 11), network_internal)],
@@ -236,7 +252,7 @@ node_client_1 = NodeConfig(
 node_client_2 = NodeConfig(
     active_services=[],
     passive_services=[
-        PassiveServiceConfig(name="bash", owner="bash", version="8.1.0", local=True, access_level=AccessLevel.ELEVATED),
+        PassiveServiceConfig(name="inetutils-ping", owner="user", version="8.1.0", local=True, access_level=AccessLevel.ELEVATED),
     ],
     traffic_processors=[],
     interfaces=[InterfaceConfig(IPAddress(network_internal.first + 12), network_internal)],
@@ -247,7 +263,7 @@ node_client_2 = NodeConfig(
 node_client_3 = NodeConfig(
     active_services=[],
     passive_services=[
-        PassiveServiceConfig(name="bash", owner="bash", version="8.1.0", local=True, access_level=AccessLevel.ELEVATED),
+        PassiveServiceConfig(name="inetutils-ping", owner="user", version="8.1.0", local=True, access_level=AccessLevel.ELEVATED),
     ],
     traffic_processors=[],
     interfaces=[InterfaceConfig(IPAddress(network_internal.first + 13), network_internal)],
@@ -257,7 +273,7 @@ node_client_3 = NodeConfig(
 
 node_client_4 = NodeConfig(
     active_services=[],
-    passive_services=[],
+    passive_services=[PassiveServiceConfig(name="inetutils-ping", owner="user", version="8.1.0", local=True, access_level=AccessLevel.ELEVATED),],
     traffic_processors=[],
     interfaces=[InterfaceConfig(IPAddress(network_wifi.first + 10), network_wifi)],
     shell="",
@@ -266,7 +282,7 @@ node_client_4 = NodeConfig(
 
 node_client_5 = NodeConfig(
     active_services=[],
-    passive_services=[],
+    passive_services=[PassiveServiceConfig(name="inetutils-ping", owner="user", version="8.1.0", local=True, access_level=AccessLevel.ELEVATED),],
     traffic_processors=[],
     interfaces=[InterfaceConfig(IPAddress(network_wifi.first + 11), network_wifi)],
     shell="",
@@ -275,7 +291,7 @@ node_client_5 = NodeConfig(
 
 node_client_6 = NodeConfig(
     active_services=[],
-    passive_services=[],
+    passive_services=[PassiveServiceConfig(name="inetutils-ping", owner="user", version="8.1.0", local=True, access_level=AccessLevel.ELEVATED),],
     traffic_processors=[],
     interfaces=[InterfaceConfig(IPAddress(network_wifi.first + 12), network_wifi)],
     shell="",
@@ -288,40 +304,14 @@ node_client_6 = NodeConfig(
 router_perimeter = RouterConfig(
     interfaces=[
         InterfaceConfig(IPAddress(network_internal.first + 1), network_internal, index=0),
-        InterfaceConfig(IPAddress(network_outside.first + 1), network_outside, index=1),
-        InterfaceConfig(IPAddress(network_outside.first + 1), network_outside, index=2),
-    ],
-    traffic_processors=[
-        FirewallConfig(
-            default_policy=FirewallPolicy.ALLOW,
-            chains=[
-                FirewallChainConfig(
-                    type=FirewallChainType.FORWARD,
-                    policy=FirewallPolicy.ALLOW,
-                    rules=[],
-                )
-            ],
-        )
-    ],
-    routing_table=[RouteConfig(network_internal, 0)],
-    id="perimeter_router",
-)
-
-router_internal = RouterConfig(
-    interfaces=[
-        InterfaceConfig(IPAddress(network_outside.first + 1), network_outside, index=0),
-        InterfaceConfig(IPAddress(network_server.first + 1), network_server, index=1),
-        InterfaceConfig(IPAddress(network_server.first + 1), network_server, index=2),
-        InterfaceConfig(IPAddress(network_server.first + 1), network_server, index=3),
-        InterfaceConfig(IPAddress(network_server.first + 1), network_server, index=4),
-        InterfaceConfig(IPAddress(network_server.first + 1), network_server, index=5),
-        InterfaceConfig(IPAddress(network_internal.first + 1), network_internal, index=6),
-        InterfaceConfig(IPAddress(network_internal.first + 1), network_internal, index=7),
-        InterfaceConfig(IPAddress(network_internal.first + 1), network_internal, index=8),
-        InterfaceConfig(IPAddress(network_internal.first + 1), network_internal, index=9),
-        InterfaceConfig(IPAddress(network_wifi.first + 1), network_wifi, index=10),
-        InterfaceConfig(IPAddress(network_wifi.first + 1), network_wifi, index=11),
-        InterfaceConfig(IPAddress(network_wifi.first + 1), network_wifi, index=12),
+        InterfaceConfig(IPAddress(network_internal.first + 1), network_internal, index=1),
+        InterfaceConfig(IPAddress(network_internal.first + 1), network_internal, index=2),
+        InterfaceConfig(IPAddress(network_internal.first + 1), network_internal, index=3),
+        InterfaceConfig(IPAddress(network_internal.first + 1), network_internal, index=4),
+        InterfaceConfig(IPAddress(network_outside.first + 1), network_outside, index=5),
+        InterfaceConfig(IPAddress(network_outside.first + 1), network_outside, index=6),
+        InterfaceConfig(IPAddress(network_wifi.first + 1), network_wifi, index=7),
+        InterfaceConfig(IPAddress(network_server.first + 1), network_server, index=8),
     ],
     traffic_processors=[
         FirewallConfig(
@@ -335,8 +325,52 @@ router_internal = RouterConfig(
                             src_net=network_internal, dst_net=network_internal, service="*", policy=FirewallPolicy.ALLOW
                         ),
                         FirewallRule(
-                            src_net=network_wifi, dst_net=network_wifi, service="*", policy=FirewallPolicy.ALLOW
+                            src_net=network_outside, dst_net=network_outside, service="*", policy=FirewallPolicy.ALLOW
                         ),
+                        FirewallRule(
+                            src_net=network_internal, dst_net=network_outside, service="*", policy=FirewallPolicy.ALLOW
+                        ),
+                        FirewallRule(  # TODO: shouldn't be necessary, probably because of direct action
+                            src_net=network_outside, dst_net=network_internal, service="*", policy=FirewallPolicy.ALLOW
+                        ),
+                        FirewallRule(
+                            src_net=network_internal, dst_net=network_server, service="*", policy=FirewallPolicy.ALLOW
+                        ),
+                        FirewallRule(
+                            src_net=network_server, dst_net=network_internal, service="*", policy=FirewallPolicy.ALLOW
+                        ),
+                        FirewallRule(
+                            src_net=network_internal, dst_net=network_wifi, service="*", policy=FirewallPolicy.ALLOW
+                        ),
+                        FirewallRule(
+                            src_net=network_wifi, dst_net=network_internal, service="*", policy=FirewallPolicy.ALLOW
+                        ),
+                    ],
+                )
+            ],
+        )
+    ],
+    routing_table=[RouteConfig(network_wifi, 7), RouteConfig(network_server, 8)],
+    id="perimeter_router",
+)
+
+router_server = RouterConfig(
+    interfaces=[
+        InterfaceConfig(IPAddress(network_internal.first + 1), network_internal, index=0),
+        InterfaceConfig(IPAddress(network_server.first + 1), network_server, index=1),
+        InterfaceConfig(IPAddress(network_server.first + 1), network_server, index=2),
+        InterfaceConfig(IPAddress(network_server.first + 1), network_server, index=3),
+        InterfaceConfig(IPAddress(network_server.first + 1), network_server, index=4),
+        InterfaceConfig(IPAddress(network_server.first + 1), network_server, index=5),
+    ],
+    traffic_processors=[
+        FirewallConfig(
+            default_policy=FirewallPolicy.DENY,
+            chains=[
+                FirewallChainConfig(
+                    type=FirewallChainType.FORWARD,
+                    policy=FirewallPolicy.DENY,
+                    rules=[
                         FirewallRule(
                             src_net=network_server, dst_net=network_server, service="*", policy=FirewallPolicy.ALLOW
                         ),
@@ -346,17 +380,40 @@ router_internal = RouterConfig(
                         FirewallRule(
                             src_net=network_internal, dst_net=network_server, service="*", policy=FirewallPolicy.ALLOW
                         ),
+                    ],
+                )
+            ],
+        )
+    ],
+    routing_table=[
+        RouteConfig(network_internal, 0),
+    ],
+    id="server_router",
+)
+
+router_wifi = RouterConfig(
+    interfaces=[
+        InterfaceConfig(IPAddress(network_internal.first + 1), network_internal, index=0),
+        InterfaceConfig(IPAddress(network_wifi.first + 1), network_wifi, index=1),
+        InterfaceConfig(IPAddress(network_wifi.first + 1), network_wifi, index=2),
+        InterfaceConfig(IPAddress(network_wifi.first + 1), network_wifi, index=3),
+    ],
+    traffic_processors=[
+        FirewallConfig(
+            default_policy=FirewallPolicy.DENY,
+            chains=[
+                FirewallChainConfig(
+                    type=FirewallChainType.FORWARD,
+                    policy=FirewallPolicy.DENY,
+                    rules=[
+                        FirewallRule(
+                            src_net=network_wifi, dst_net=network_wifi, service="*", policy=FirewallPolicy.ALLOW
+                        ),
                         FirewallRule(
                             src_net=network_internal, dst_net=network_wifi, service="*", policy=FirewallPolicy.ALLOW
                         ),
                         FirewallRule(
                             src_net=network_wifi, dst_net=network_internal, service="*", policy=FirewallPolicy.ALLOW
-                        ),
-                        FirewallRule(
-                            src_net=network_outside, dst_net=network_internal, service="*", policy=FirewallPolicy.ALLOW
-                        ),
-                        FirewallRule(
-                            src_net=network_internal, dst_net=network_outside, service="*", policy=FirewallPolicy.ALLOW
                         ),
                     ],
                 )
@@ -364,36 +421,40 @@ router_internal = RouterConfig(
         )
     ],
     routing_table=[
-        RouteConfig(network_outside, 0),
+        RouteConfig(network_internal, 0),
     ],
-    id="internal_router",
+    id="wifi_router",
 )
 
 # -----------------------------------------------------------------------------
 # Connection definitions
 # -----------------------------------------------------------------------------
-connections_internal_router = [
-    ConnectionConfig(node_wordpress, 0, router_internal, 1),
-    ConnectionConfig(node_database, 0, router_internal, 2),
-    ConnectionConfig(node_vsftpd, 0, router_internal, 3),
-    ConnectionConfig(node_chat, 0, router_internal, 4),
-    ConnectionConfig(node_mail, 0, router_internal, 5),
-    ConnectionConfig(node_client_developer, 0, router_internal, 6),
-    ConnectionConfig(node_client_1, 0, router_internal, 7),
-    ConnectionConfig(node_client_2, 0, router_internal, 8),
-    ConnectionConfig(node_client_3, 0, router_internal, 9),
-    ConnectionConfig(node_client_4, 0, router_internal, 10),
-    ConnectionConfig(node_client_5, 0, router_internal, 11),
-    ConnectionConfig(node_client_6, 0, router_internal, 12),
+connections_perimeter_router = [
+    ConnectionConfig(node_client_1, 0, router_perimeter, 1),
+    ConnectionConfig(node_client_2, 0, router_perimeter, 2),
+    ConnectionConfig(node_client_3, 0, router_perimeter, 3),
+    ConnectionConfig(node_client_developer, 0, router_perimeter, 4),
+    ConnectionConfig(node_attacker, 0, router_perimeter, 5),
+    ConnectionConfig(node_dns, 0, router_perimeter, 6),
 ]
 
-connections_perimeter_router = [
-    ConnectionConfig(node_attacker, 0, router_perimeter, 1),
-    ConnectionConfig(node_dns, 0, router_perimeter, 2),
+connections_server_router = [
+    ConnectionConfig(node_wordpress, 0, router_server, 1),
+    ConnectionConfig(node_database, 0, router_server, 2),
+    ConnectionConfig(node_vsftpd, 0, router_server, 3),
+    ConnectionConfig(node_chat, 0, router_server, 4),
+    ConnectionConfig(node_mail, 0, router_server, 5),
+]
+
+connections_wifi_router = [
+    ConnectionConfig(node_client_4, 0, router_wifi, 1),
+    ConnectionConfig(node_client_5, 0, router_wifi, 2),
+    ConnectionConfig(node_client_6, 0, router_wifi, 3),
 ]
 
 connections_routes = [
-    ConnectionConfig(router_perimeter, 0, router_internal, 0),
+    ConnectionConfig(router_perimeter, 7, router_wifi, 0),
+    ConnectionConfig(router_perimeter, 8, router_server, 0),
 ]
 
 # -----------------------------------------------------------------------------
@@ -406,7 +467,7 @@ exploit_vsftpd = ExploitConfig(
 )
 
 exploit_phishing = ExploitConfig(
-    services=[VulnerableServiceConfig(service="bash", min_version="1.2.3", max_version="1.2.3")],
+    services=[VulnerableServiceConfig(service="python3", min_version="3.11.1", max_version="3.11.1")],
     locality=ExploitLocality.REMOTE,
     category=ExploitCategory.CODE_EXECUTION,
     id="phishing_exploit",
@@ -437,7 +498,7 @@ nodes = [
     node_client_5,
     node_client_6,
 ]
-routers = [router_perimeter, router_internal]
-connections = [*connections_internal_router, *connections_perimeter_router, *connections_routes]
+routers = [router_perimeter, router_server, router_wifi]
+connections = [*connections_server_router, *connections_perimeter_router, *connections_wifi_router, *connections_routes]
 exploits = [exploit_vsftpd, exploit_phishing, exploit_bruteforce]
 all_config_items = [*nodes, *routers, *connections, *exploits]
