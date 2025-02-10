@@ -36,9 +36,9 @@ class LocalCommandExecution(Action):
     ):
         template = {
             f"execute-command-locally-{message_id}": {
-                "module": "mod_cmd",
+                "module": "command",
                 "arguments": {
-                    "cmd": command
+                    "command": command
                 },
             }
         }
