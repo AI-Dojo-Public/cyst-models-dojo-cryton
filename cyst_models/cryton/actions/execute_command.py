@@ -7,14 +7,15 @@ class ExecuteCommand(Action):
         message_id: int,
         caller_id: str,
         external_resources: ExternalResources,
-        session: int,
+        session: str | int,
         command: str,
     ):
+        used_session = session if isinstance(session, int) else f'{{{{ {session} }}}}'
         template = {
             f"execute-command-{message_id}": {
                 "module": "command",
                 "arguments": {
-                    "session_id": session,
+                    "session_id": used_session,
                     "command": command,
                 },
             },

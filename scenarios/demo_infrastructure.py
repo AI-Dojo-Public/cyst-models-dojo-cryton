@@ -19,6 +19,7 @@ from cyst.api.configuration import (
     VulnerableServiceConfig,
     DataConfig,
     RouteConfig,
+    SessionConfig
 )
 from cyst.api.environment.configuration import ServiceParameter
 from cyst.api.logic.access import (
@@ -28,9 +29,12 @@ from cyst.api.logic.access import (
     AuthenticationTokenSecurity,
 )
 from cyst.api.network.firewall import FirewallPolicy, FirewallChainType, FirewallRule
-
 from pathlib import Path
 
+
+# -----------------------------------------------------------------------------
+# Files
+# -----------------------------------------------------------------------------
 with open(f"{Path(__file__).parent}/phishing.py") as f:
     phishing_file = f.read()
 
@@ -205,8 +209,8 @@ node_client_developer = NodeConfig(
             ],
             private_data=[
                 DataConfig(
-                    id="~/.bash_history",
-                    description=f"mysqldump -u user -h {node_database.interfaces[0].ip} --password=pass --no-tablespaces table",
+                    id="/home/user/.bash_history",
+                    description=f"mysqldump -u wordpress -h {node_database.interfaces[0].ip} --password=wordpress --no-tablespaces wordpress",
                     owner="user",
                 )
             ],
@@ -242,6 +246,7 @@ node_client_1 = NodeConfig(
                 )
             ]
         ),
+        PassiveServiceConfig(name="inetutils-ping", owner="user", version="8.1.0", local=True, access_level=AccessLevel.ELEVATED),
     ],
     traffic_processors=[],
     interfaces=[InterfaceConfig(IPAddress(network_internal.first + 11), network_internal)],
@@ -329,9 +334,6 @@ router_perimeter = RouterConfig(
                         ),
                         FirewallRule(
                             src_net=network_internal, dst_net=network_outside, service="*", policy=FirewallPolicy.ALLOW
-                        ),
-                        FirewallRule(  # TODO: shouldn't be necessary, probably because of direct action
-                            src_net=network_outside, dst_net=network_internal, service="*", policy=FirewallPolicy.ALLOW
                         ),
                         FirewallRule(
                             src_net=network_internal, dst_net=network_server, service="*", policy=FirewallPolicy.ALLOW
@@ -461,22 +463,9 @@ connections_routes = [
 # Exploit definitions
 # -----------------------------------------------------------------------------
 exploit_vsftpd = ExploitConfig(
-    [VulnerableServiceConfig("vsftpd", "2.3.4")],
+    [VulnerableServiceConfig("vsftpd", "2.3.4", "2.3.4")],
     ExploitLocality.REMOTE,
-    ExploitCategory.CODE_EXECUTION,
-)
-
-exploit_phishing = ExploitConfig(
-    services=[VulnerableServiceConfig(service="python3", min_version="3.11.1", max_version="3.11.1")],
-    locality=ExploitLocality.REMOTE,
-    category=ExploitCategory.CODE_EXECUTION,
-    id="phishing_exploit",
-)
-
-exploit_bruteforce = ExploitConfig(
-    services=[VulnerableServiceConfig(service="ssh", min_version="5.1.4", max_version="5.1.4")],
-    locality=ExploitLocality.REMOTE,
-    category=ExploitCategory.CODE_EXECUTION,
+    ExploitCategory.AUTH_MANIPULATION,
 )
 
 # -----------------------------------------------------------------------------
@@ -498,7 +487,17 @@ nodes = [
     node_client_5,
     node_client_6,
 ]
+
+initial_session = SessionConfig(
+    src_service="scripted_attacker",
+    dst_service="python3",
+    waypoints=["node_attacker", "perimeter_router", "node_client1"],
+    reverse=True,
+    id="session_1"
+)
+
+sessions = [initial_session]
 routers = [router_perimeter, router_server, router_wifi]
 connections = [*connections_server_router, *connections_perimeter_router, *connections_wifi_router, *connections_routes]
-exploits = [exploit_vsftpd, exploit_phishing, exploit_bruteforce]
-all_config_items = [*nodes, *routers, *connections, *exploits]
+exploits = [exploit_vsftpd]
+all_config_items = [*nodes, *routers, *connections, *exploits, *sessions]

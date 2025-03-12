@@ -5,14 +5,15 @@ import re
 
 class ScanNetwork(Action):
     def __init__(
-        self, message_id: int, caller_id: str, external_resources: ExternalResources, target: str, session: int
+        self, message_id: int, caller_id: str, external_resources: ExternalResources, target: str, session: str | int
     ):
+        used_session = session if isinstance(session, int) else f'{{{{ {session} }}}}'
         template = {
             f"scan-network-{message_id}": {
                 "module": "metasploit",
                 "arguments": {
                     "module_name": "multi/gather/ping_sweep",
-                    "datastore": {"SESSION": session, "RHOSTS": target},
+                    "datastore": {"SESSION": used_session, "RHOSTS": target},
                 },
             }
         }

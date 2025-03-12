@@ -1,0 +1,8 @@
+applications:
+  - type: ftp
+    host: auto
+    port: 21
+    origin_host: 127.0.0.1
+    origin_port: 21
+    vulnerabilities:
+      - cve-2011-2523

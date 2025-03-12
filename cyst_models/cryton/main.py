@@ -25,12 +25,13 @@ from cyst.api.environment.platform_specification import (
 )
 from cyst.api.logic.behavioral_model import BehavioralModel, BehavioralModelDescription
 from cyst.api.logic.composite_action import CompositeActionManager
+from cyst.api.logic.exploit import ExploitCategory
 from cyst.api.network.node import Node
 from cyst.api.utils.duration import Duration, msecs
 from netaddr.ip import IPNetwork, IPAddress
 
-from cyst_models.cryton.session import MetasploitSession
 from cyst_models.cryton.actions import *
+from cyst_platforms.docker_cryton.configuration import SessionImpl
 
 
 class CrytonModel(BehavioralModel):
@@ -59,26 +60,6 @@ class CrytonModel(BehavioralModel):
         self._policy = policy
         self._messaging = messaging
         self._cam = composite_action_manager
-
-        self._action_store.add(
-            ActionDescription(
-                "dojo:phishing",
-                ActionType.COMPOSITE,
-                "Establish session from phishing",
-                [],
-                PlatformSpecification(PlatformType.REAL_TIME, "docker+cryton"),
-            )
-        )
-
-        self._action_store.add(
-            ActionDescription(
-                "dojo:direct:wait_for_session",
-                ActionType.DIRECT,
-                "Start session listener and wait for the session",
-                [],
-                PlatformSpecification(PlatformType.REAL_TIME, "docker+cryton"),
-            )
-        )
 
         self._action_store.add(
             ActionDescription(
@@ -229,51 +210,12 @@ class CrytonModel(BehavioralModel):
             session=message.session,
         )
 
-    async def process_phishing(self, message: Request) -> Tuple[Duration, Response]:
-        action = self._action_store.get("dojo:direct:wait_for_session")
-        request = self._messaging.create_request(message.dst_ip, message.dst_service, action, original_request=message)
-        response: Response = await self._cam.call_action(request, 0)
-
-        action = self._action_store.get("dojo:direct:upgrade_session")
-        request = self._messaging.create_request(
-            message.dst_ip, message.dst_service, action, response.session, original_request=message
-        )
-        response: Response = await self._cam.call_action(request, 0)
-
-        action = self._action_store.get("dojo:direct:update_routing")
-        request = self._messaging.create_request(
-            message.dst_ip, message.dst_service, action, response.session, original_request=message
-        )
-        response: Response = await self._cam.call_action(request, 0)
-
-        return msecs(0), self._messaging.create_response(
-            message, Status(StatusOrigin.SERVICE, StatusValue.SUCCESS), response.content, response.session
-        )
-
-    async def process_direct_wait_for_session(self, message: Request, _: Node) -> Tuple[Duration, Response]:
-        action = SessionListener(message.id, message.platform_specific["caller_id"], self._external)
-        await action.execute()
-
-        if not action.is_success():
-            return msecs(action.execution_time), self._messaging.create_response(
-                message,
-                Status(StatusOrigin.SERVICE, StatusValue.FAILURE),
-                action.processed_output,
-            )
-
-        return msecs(action.execution_time), self._messaging.create_response(
-            message,
-            Status(StatusOrigin.SERVICE, StatusValue.SUCCESS),
-            action.processed_output,
-            MetasploitSession(message.src_service, action.session_id),
-        )
-
     async def process_direct_upgrade_session(self, message: Request, _: Node) -> Tuple[Duration, Response]:
         action = UpgradeSession(
             message.id,
             message.platform_specific["caller_id"],
             self._external,
-            int(message.session.id),
+            message.session.id,
             str(message.src_ip),
         )
         await action.execute()
@@ -289,12 +231,12 @@ class CrytonModel(BehavioralModel):
             message,
             Status(StatusOrigin.SERVICE, StatusValue.SUCCESS),
             action.processed_output,
-            MetasploitSession(message.src_service, action.session_id),
+            SessionImpl(message.src_service, str(action.session_id)),
         )
 
     async def process_direct_update_routing(self, message: Request, _: Node) -> Tuple[Duration, Response]:
         action = UpdateRouting(
-            message.id, message.platform_specific["caller_id"], self._external, int(message.session.id)
+            message.id, message.platform_specific["caller_id"], self._external, message.session.id
         )
         await action.execute()
 
@@ -317,7 +259,7 @@ class CrytonModel(BehavioralModel):
         target = message.action.parameters["to_network"].value
 
         action = ScanNetwork(
-            message.id, message.platform_specific["caller_id"], self._external, str(target), int(message.session.id)
+            message.id, message.platform_specific["caller_id"], self._external, str(target), message.session.id
         )
         await action.execute()
 
@@ -366,11 +308,22 @@ class CrytonModel(BehavioralModel):
     async def _ports_to_services(cls, ports: list[int]) -> list[str]:
         return [cls.mapping_port_service[port] for port in ports]
 
-    async def process_exploit_server(self, message: Request, _: Node) -> Tuple[Duration, Response]:
+    async def process_exploit_server(self, message: Request, node: Node) -> Tuple[Duration, Response]:
         action = ExploitServer(
             message.id, message.platform_specific["caller_id"], self._external, str(message.dst_ip), message.dst_service
         )
         await action.execute()
+
+        if message.dst_service == "wordpress":
+            action = ExploitServer(
+                message.id, message.platform_specific["caller_id"], self._external, str(message.dst_ip), "bind", 4444
+            )
+            await action.execute()
+        elif message.dst_service == "samba":
+            action = ExploitServer(
+                message.id, message.platform_specific["caller_id"], self._external, str(message.dst_ip), "bind", 6969
+            )
+            await action.execute()
 
         if not action.is_success():
             return msecs(action.execution_time), self._messaging.create_response(
@@ -380,15 +333,17 @@ class CrytonModel(BehavioralModel):
                 message.session,
             )
 
-        if message.dst_service in ["ssh"]:
-            new_session = MetasploitSession(message.src_service, action.session_id)
+        if message.dst_service in ["ssh"] or message.action.exploit.category is ExploitCategory.AUTH_MANIPULATION:
+            new_session = SessionImpl(message.src_service, str(action.session_id))
+            result = f"session {new_session.id}"
         else:
             new_session = message.session
+            result = action.processed_output
 
         return msecs(action.execution_time), self._messaging.create_response(
             message,
             Status(StatusOrigin.SERVICE, StatusValue.SUCCESS),
-            action.processed_output,
+            result,
             new_session,
         )
 
@@ -396,7 +351,7 @@ class CrytonModel(BehavioralModel):
         directory = message.action.parameters["directory"].value
 
         action = FindData(
-            message.id, message.platform_specific["caller_id"], self._external, int(message.session.id), directory
+            message.id, message.platform_specific["caller_id"], self._external, message.session.id, directory
         )
         await action.execute()
 
@@ -442,7 +397,7 @@ class CrytonModel(BehavioralModel):
         file_path = message.action.parameters["path"].value
 
         action = ExfiltrateData(
-            message.id, message.platform_specific["caller_id"], self._external, int(message.session.id), file_path
+            message.id, message.platform_specific["caller_id"], self._external, message.session.id, file_path
         )
         await action.execute()
 

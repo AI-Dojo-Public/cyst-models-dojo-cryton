@@ -12,7 +12,17 @@ from cyst_services.scripted_actor.main import ScriptedActorControl
 from cyst.api.environment.environment import Environment
 from cyst.api.host.service import ActiveService
 
-from demo_infrastructure import all_config_items, node_client_developer, node_client_1, initial_session
+from demo_firehole_infrastructure import (
+    all_config_items,
+    node_wordpress,
+    node_database,
+    node_vsftpd,
+    node_workstation,
+    exploit_wordpress,
+    exploit_mysql,
+    exploit_vsftpd,
+    exploit_smb
+)
 
 
 class Scenario:
@@ -83,77 +93,66 @@ class Scenario:
         return response
 
     def run(self):
-        init_sess = self.attacker.sessions[initial_session.id]
-
-        # Scan new network
-        # In case you want to scan the whole network, use `node_client_1.interfaces[0].net` instead
-        action_response = self.execute_action(
-            "dojo:scan_network",
-            str(node_client_1.interfaces[0].ip),
-            [Status(StatusOrigin.NETWORK, StatusValue.SUCCESS)],
-            {"to_network": node_client_developer.interfaces[0].ip},
-            session=init_sess,
-        )
-
-        # Scan the hosts for ssh service
-        # In case you want to scan the whole network, use `node_client_1.interfaces[0].net` instead
-        action_response = self.execute_action(
-            "dojo:find_services",
-            str(node_client_1.interfaces[0].ip),
-            [Status(StatusOrigin.NETWORK, StatusValue.SUCCESS)],
-            {"to_network": node_client_developer.interfaces[0].ip, "services": ["ssh"]},
-            session=action_response.session,
-        )
-
-        # Bruteforce the ssh service
         action_response = self.execute_action(
             "dojo:exploit_server",
-            str(node_client_developer.interfaces[0].ip),
+            str(node_wordpress.interfaces[0].ip),
             [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-            session=action_response.session,
-            service="ssh",
-        )
-        developer_auth = action_response.auth
-
-        # Home directory listing
-        action_response = self.execute_action(
-            "dojo:find_data",
-            str(node_client_developer.interfaces[0].ip),
-            [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-            {"directory": "/home/user/"},
-            session=action_response.session,
-            auth=developer_auth,
+            service="wordpress",
+            exploit=self.environment.resources.exploit_store.get_exploit(exploit_wordpress.id)[0],
         )
 
-        # Check bash history
-        action_response = self.execute_action(
-            "dojo:direct:exfiltrate_data",
-            str(node_client_developer.interfaces[0].ip),
-            [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-            {"path": "/home/user/.bash_history"},
-            session=action_response.session,
-            auth=developer_auth,
-        )
-        mysqldump_command = action_response.content
-
-        # Check for mysqldump
         action_response = self.execute_action(
             "dojo:execute_command",
-            str(node_client_developer.interfaces[0].ip),
+            str(node_wordpress.interfaces[0].ip),
             [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-            {"command": "which mysqldump"},
             session=action_response.session,
-            auth=developer_auth,
+            service="wordpress",
+            action_parameters={"command": "whoami"},
         )
 
-        # Get data from DB
+        action_response = self.execute_action(
+            "dojo:exploit_server",
+            str(node_database.interfaces[0].ip),
+            [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
+            session=action_response.session,
+            service="mysql",
+            exploit=self.environment.resources.exploit_store.get_exploit(exploit_mysql.id)[0],
+        )
+
+        action_response = self.execute_action(
+            "dojo:exploit_server",
+            str(node_workstation.interfaces[0].ip),
+            [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
+            session=action_response.session,
+            service="samba",
+            exploit=self.environment.resources.exploit_store.get_exploit(exploit_smb.id)[0],
+        )
+
         action_response = self.execute_action(
             "dojo:execute_command",
-            str(node_client_developer.interfaces[0].ip),
+            str(node_workstation.interfaces[0].ip),
             [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
-            {"command": mysqldump_command},
             session=action_response.session,
-            auth=developer_auth,
+            service="samba",
+            action_parameters={"command": "whoami"},
+        )
+
+        action_response = self.execute_action(
+            "dojo:exploit_server",
+            str(node_vsftpd.interfaces[0].ip),
+            [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
+            session=action_response.session,
+            service="vsftpd",
+            exploit=self.environment.resources.exploit_store.get_exploit(exploit_vsftpd.id)[0],
+        )
+
+        action_response = self.execute_action(
+            "dojo:execute_command",
+            str(node_vsftpd.interfaces[0].ip),
+            [Status(StatusOrigin.SERVICE, StatusValue.SUCCESS)],
+            session=action_response.session,
+            service="vsftpd",
+            action_parameters={"command": "whoami"},
         )
 
 

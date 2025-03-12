@@ -1,6 +1,7 @@
 from typing import Tuple, Callable, Union, List, Coroutine, Any, Iterable, Dict
 from copy import deepcopy
 from cyst.api.logic.access import AccessLevel
+from cyst.api.logic.exploit import ExploitCategory
 from netaddr import IPNetwork
 import asyncio
 import random
@@ -52,19 +53,6 @@ class SimulationModel(BehavioralModel):
         self._messaging = messaging
         self._infrastructure = infrastructure
         self._cam = composite_action_manager
-
-        self._action_store.add(
-            ActionDescription(
-                "dojo:phishing",
-                ActionType.COMPOSITE,
-                "Establish session from phishing",
-                [],
-                [
-                    PlatformSpecification(PlatformType.SIMULATED_TIME, "CYST"),
-                    PlatformSpecification(PlatformType.REAL_TIME, "CYST"),
-                ],
-            )
-        )
 
         self._action_store.add(
             ActionDescription(
@@ -263,22 +251,6 @@ class SimulationModel(BehavioralModel):
             message, Status(StatusOrigin.SYSTEM, StatusValue.ERROR), session=message.session
         )
 
-    async def process_phishing(self, message: Request) -> Tuple[Duration, Response]:
-        action = self._action_store.get("dojo:direct:create_session")
-        action.set_exploit(self._exploit_store.get_exploit("phishing_exploit")[0])
-        request = self._messaging.create_request(message.dst_ip, message.dst_service, action, original_request=message)
-        response: Response = await self._cam.call_action(request, 0)
-
-        action = self._action_store.get("dojo:direct:update_routing")
-        request = self._messaging.create_request(
-            message.dst_ip, message.dst_service, action, response.session, original_request=message
-        )
-        response: Response = await self._cam.call_action(request, 0)
-
-        return msecs(1), self._messaging.create_response(
-            message, Status(StatusOrigin.SERVICE, StatusValue.SUCCESS), response.content, response.session
-        )
-
     async def process_direct_create_session(self, message: Request, node: Node) -> Tuple[Duration, Response]:
         if not message.action.exploit:
             return msecs(1), self._messaging.create_response(message, Status(StatusOrigin.SERVICE, StatusValue.FAILURE))
@@ -301,8 +273,8 @@ class SimulationModel(BehavioralModel):
         )
 
     async def process_scan_network(self, message: Request) -> Tuple[Duration, Response]:
-        target = message.action.parameters["to_network"].value
-        targets = target.iter_hosts() if isinstance(target, IPNetwork) else [target]
+        to_network = message.action.parameters["to_network"].value
+        targets = to_network.iter_hosts() if isinstance(to_network, IPNetwork) else [to_network]
 
         results = await self._scan_multiple(targets, message)
         running_hosts = []
@@ -315,20 +287,12 @@ class SimulationModel(BehavioralModel):
         )
 
     async def process_find_services(self, message: Request) -> Tuple[Duration, Response]:
-        target_network = None
-        if "to_network" in message.action.parameters:
-            target_network = message.action.parameters["to_network"].value
-        # services = message.action.parameters["services"].value
-
-        targets = target_network.iter_hosts() if target_network and isinstance(target_network, IPNetwork) else [message.dst_ip]
+        to_network = message.action.parameters["to_network"].value
+        targets = to_network.iter_hosts() if isinstance(to_network, IPNetwork) else [to_network]
         results = await self._scan_multiple(targets, message)
-        #running_services: Dict[str, List[Dict]] = {}
         running_services: List[Dict[str, str]] = []
         for result in results:
             if result.status.value == StatusValue.SUCCESS:
-                #running_services[result.src_ip] = list(
-                #    filter(lambda service: service in services, [c[0] for c in result.content])
-                #)
                 running_services.append({"ip": str(result.src_ip), "services": [{"name": service[0], "version": str(service[1])} for service in result.content]})
 
         return msecs(1), self._messaging.create_response(
@@ -345,11 +309,13 @@ class SimulationModel(BehavioralModel):
         return await asyncio.gather(*tasks)
 
     async def process_exploit_server(self, message: Request, node: Node) -> Tuple[Duration, Response]:
-        if not message.action.exploit:
-            return msecs(1), self._messaging.create_response(message, Status(StatusOrigin.SERVICE, StatusValue.FAILURE))
-        is_exploitable, reason = self._exploit_store.evaluate_exploit(message.action.exploit, message, node)
-        if not is_exploitable:
-            return msecs(1), self._messaging.create_response(message, Status(StatusOrigin.SERVICE, StatusValue.FAILURE))
+        # This allows bruteforce without setting ssh exploit
+        if message.dst_service not in ["ssh"]:
+            if not message.action.exploit:
+                return msecs(1), self._messaging.create_response(message, Status(StatusOrigin.SERVICE, StatusValue.FAILURE))
+            is_exploitable, reason = self._exploit_store.evaluate_exploit(message.action.exploit, message, node)
+            if not is_exploitable:
+                return msecs(1), self._messaging.create_response(message, Status(StatusOrigin.SERVICE, StatusValue.FAILURE))
 
         # Sanity check
         error = ""
@@ -364,25 +330,40 @@ class SimulationModel(BehavioralModel):
             )
 
         if message.dst_service in ["ssh"]:
+            session = self._configuration.network.create_session_from_message(message)
             auth = self._configuration.access.create_authorization(
                 "user", AccessLevel.ELEVATED, "asd", services=["ssh"]
             )
-            new_session = self._configuration.network.create_session_from_message(message)
-            content = [{"username": "user", "password": "pass"}]
+            content = [{"username": "user", "password": "user"}]
             return msecs(random.randint(1, 10)), self._messaging.create_response(
-                message, Status(StatusOrigin.SERVICE, StatusValue.SUCCESS), content, new_session, auth
+                message, Status(StatusOrigin.SERVICE, StatusValue.SUCCESS), content, session, auth
             )
-        else:
-            new_session = self._configuration.network.create_session_from_message(message)
+
+        if message.action.exploit.category is ExploitCategory.AUTH_MANIPULATION:
+            session = self._configuration.network.create_session_from_message(message)
             return msecs(1), self._messaging.create_response(
-                message, Status(StatusOrigin.SERVICE, StatusValue.SUCCESS), "", new_session
+                message, Status(StatusOrigin.SERVICE, StatusValue.SUCCESS), f"session {session.id}", session, message.auth
+            )
+        elif message.action.exploit.category is ExploitCategory.CODE_EXECUTION:
+            return msecs(1), self._messaging.create_response(
+                message, Status(StatusOrigin.SERVICE, StatusValue.SUCCESS), "result", message.session, message.auth
             )
 
     async def process_find_data(self, message: Request, node: Node) -> Tuple[Duration, Response]:
         directory = message.action.parameters["directory"].value
 
         result = []
-        for data in self._configuration.service.private_data(node.services[message.auth.services[0]].passive_service):
+        dst_service = ""
+        if message.auth:
+            dst_service = message.auth.services[0]
+        elif message.session and message.session.end[0] in node.ips:
+            dst_service = message.session.end[1]
+        else:
+            return msecs(1), self._messaging.create_response(
+                message, Status(StatusOrigin.SERVICE, StatusValue.FAILURE), "Either session terminating at the service, or an auth is needed.", message.session
+            )
+
+        for data in self._configuration.service.private_data(node.services[dst_service].passive_service):
             if data.id.startswith(directory):
                 result.append(data.id)
 
@@ -394,7 +375,7 @@ class SimulationModel(BehavioralModel):
         command = message.action.parameters["command"].value
 
         match command:
-            case "mysqldump -u user -h 192.168.3.11 --password=pass --no-tablespaces table":
+            case "mysqldump -u wordpress -h 192.168.3.11 --password=wordpress --no-tablespaces wordpress":
                 auth = self._configuration.access.create_authorization(
                     "user", AccessLevel.ELEVATED, "dsa", services=["mysql"]
                 )
@@ -429,6 +410,8 @@ class SimulationModel(BehavioralModel):
         match command:
             case "which mysqldump":
                 content = "/usr/bin/mysqldump"
+            case "whoami":
+                content = node.services[message.dst_service].owner
             case _:
                 content = "ERROR"
 
