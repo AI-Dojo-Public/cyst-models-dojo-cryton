@@ -1,0 +1,9 @@
+applications:
+  - type: http
+    host: auto
+    port: 80
+    origin_host: 127.0.0.1
+    origin_port: 80
+    vulnerabilities:
+      - CVE-2016-10073
+      - CVE-2014-6287

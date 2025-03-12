@@ -7,14 +7,15 @@ class ExfiltrateData(Action):
         message_id: int,
         caller_id: str,
         external_resources: ExternalResources,
-        session: int,
+        session: str | int,
         file: str,
     ):
+        used_session = session if isinstance(session, int) else f'{{{{ {session} }}}}'
         template = {
             f"exfiltrate-data-{message_id}": {
                 "module": "command",
                 "arguments": {
-                    "session_id": session,
+                    "session_id": used_session,
                     "command": f"cat {file}",
                     "timeout": 60,
                 },

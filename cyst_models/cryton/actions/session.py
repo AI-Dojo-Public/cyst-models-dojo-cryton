@@ -31,8 +31,9 @@ class SessionListener(Action):
 
 class UpgradeSession(Action):
     def __init__(
-        self, message_id: int, caller_id: str, external_resources: ExternalResources, session: int, lhost: str
+        self, message_id: int, caller_id: str, external_resources: ExternalResources, session: str | int, lhost: str
     ):
+        used_session = session if isinstance(session, int) else f'{{{{ {session} }}}}'
         template = {
             f"upgrade-session-{message_id}": {
                 "module": "metasploit",
@@ -40,7 +41,7 @@ class UpgradeSession(Action):
                     "module_name": "multi/manage/shell_to_meterpreter",
                     "datastore": {
                         "LHOST": lhost,
-                        "SESSION": session,
+                        "SESSION": used_session,
                     },
                 },
             }

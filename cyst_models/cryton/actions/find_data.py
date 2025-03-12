@@ -7,14 +7,15 @@ class FindData(Action):
         message_id: int,
         caller_id: str,
         external_resources: ExternalResources,
-        session: int,
+        session: str | int,
         directory: str,
     ):
+        used_session = session if isinstance(session, int) else f'{{{{ {session} }}}}'
         template = {
             f"find-data-{message_id}": {
                 "module": "command",
                 "arguments": {
-                    "session_id": session,
+                    "session_id": used_session,
                     "command": f"find {directory}",
                     "timeout": 60,
                 },

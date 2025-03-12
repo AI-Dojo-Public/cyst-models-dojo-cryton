@@ -62,9 +62,8 @@ class Action(ABC):
         Runs Cryton action in the correct context using resource.
         :return: None
         """
-        resource = self._external_resources.create_resource("cryton://")
         self._report = await self._external_resources.fetch_async(
-            resource,
+            "cryton://",
             {
                 "template": copy.deepcopy(self._template),
                 "node_id": self._caller_id.split(".")[0],

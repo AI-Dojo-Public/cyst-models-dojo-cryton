@@ -1,0 +1,8 @@
+applications:
+  - type: mysql
+    host: auto
+    port: 3306
+    origin_host: 127.0.0.1
+    origin_port: 3306
+    vulnerabilities:
+      - CVE-2012-2122

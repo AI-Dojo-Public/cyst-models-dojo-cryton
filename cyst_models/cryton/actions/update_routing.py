@@ -4,7 +4,8 @@ import re
 
 
 class UpdateRouting(Action):
-    def __init__(self, message_id: int, caller_id: str, external_resources: ExternalResources, session_id: int):
+    def __init__(self, message_id: int, caller_id: str, external_resources: ExternalResources, session: str | int):
+        used_session = session if isinstance(session, int) else f'{{{{ {session} }}}}'
         template = {
             f"update-routing-table-{message_id}": {
                 "module": "metasploit",
@@ -12,7 +13,7 @@ class UpdateRouting(Action):
                     "module_name": "multi/manage/autoroute",
                     "datastore": {
                         "CMD": "autoadd",
-                        "SESSION": session_id,
+                        "SESSION": used_session,
                     },
                 },
             }

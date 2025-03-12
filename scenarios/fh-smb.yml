@@ -1,0 +1,8 @@
+applications:
+  - type: smb
+    host: auto
+    port: 445
+    origin_host: 127.0.0.1
+    origin_port: 445
+    vulnerabilities:
+      - CVE-2024-99999
