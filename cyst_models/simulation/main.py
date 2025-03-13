@@ -420,9 +420,25 @@ class SimulationModel(BehavioralModel):
         )
 
     async def process_direct_exfiltrate_data(self, message: Request, node: Node) -> Tuple[Duration, Response]:
+        if not "path" in message.action.parameters:
+            return msecs(1), self._messaging.create_response(
+                message, Status(StatusOrigin.SERVICE, StatusValue.FAILURE), "Missing the 'path' parameter.", message.session, message.auth
+            )
+
         file = message.action.parameters["path"].value
 
-        for data in self._configuration.service.private_data(node.services[message.auth.services[0]].passive_service):
+        result = []
+        dst_service = ""
+        if message.auth:
+            dst_service = message.auth.services[0]
+        elif message.session and message.session.end[0] in node.ips:
+            dst_service = message.session.end[1]
+        else:
+            return msecs(1), self._messaging.create_response(
+                message, Status(StatusOrigin.SERVICE, StatusValue.FAILURE), "Either session terminating at the service, or an auth is needed.", message.session
+            )
+
+        for data in self._configuration.service.private_data(node.services[dst_service].passive_service):
             if data.id == file:
                 return msecs(1), self._messaging.create_response(
                     message,
