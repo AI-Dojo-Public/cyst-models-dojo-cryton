@@ -1,4 +1,4 @@
-This repository contains a namespace package CrytonProxy for use with CYST Core.
+This repository contains the `dojo` action namespace for use with CYST Core.
 
 CYST documentation can be found [here](https://muni.cz/go/cyst/).
 
